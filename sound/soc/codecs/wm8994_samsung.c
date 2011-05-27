@@ -40,7 +40,9 @@
 #include <plat/gpio-cfg.h>
 #include <mach/regs-clock.h>
 #include "wm8994_samsung.h"
-#include "../../../arch/arm/mach-s5pv210/herring.h"
+#if defined(CONFIG_SND_VOODOO)
+#include "wm8994_voodoo.h"
+#endif
 
 #define WM8994_VERSION "0.1"
 #define SUBJECT "wm8994_samsung.c"
@@ -48,6 +50,8 @@
 #if defined(CONFIG_VIDEO_TV20) && defined(CONFIG_SND_S5P_WM8994_MASTER)
 #define HDMI_USE_AUDIO
 #endif
+
+bool _dockredir = false;
 
 /*
  *Definitions of clock related.
@@ -118,7 +122,7 @@ select_route universal_wm8994_playback_paths[] = {
 	wm8994_disable_path, wm8994_set_playback_receiver,
 	wm8994_set_playback_speaker, wm8994_set_playback_headset,
 	wm8994_set_playback_headset, wm8994_set_playback_bluetooth,
-	wm8994_set_playback_speaker_headset
+	wm8994_set_playback_speaker_headset,wm8994_set_playback_extra_dock_speaker
 };
 
 select_route universal_wm8994_voicecall_paths[] = {
@@ -174,6 +178,11 @@ int wm8994_write(struct snd_soc_codec *codec, unsigned int reg,
 {
 	u8 data[4];
 	int ret;
+
+//voodoo sound
+#ifdef CONFIG_SND_VOODOO
+	value = voodoo_hook_wm8994_write(codec, reg, value);
+#endif
 
 	/* data is
 	 * D15..D9 WM8993 register offset
@@ -279,7 +288,7 @@ static int wm899x_inpga_put_volsw_vu(struct snd_kcontrol *kcontrol,
 #define MAX_VOICECALL_PATH 8
 static const char *playback_path[] = {
 	"OFF", "RCV", "SPK", "HP", "HP_NO_MIC", "BT", "SPK_HP",
-	"RING_SPK", "RING_HP", "RING_NO_MIC", "RING_SPK_HP"
+	"RING_SPK", "RING_HP", "RING_NO_MIC", "RING_SPK_HP", "EXTRA_DOCK_SPEAKER"
 };
 static const char *voicecall_path[] = { "OFF", "RCV", "SPK", "HP",
 					"HP_NO_MIC", "BT", "TTY_VCO",
@@ -361,6 +370,9 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 		DEBUG_LOG_ERR("Unknown Path\n");
 		return -ENODEV;
 	}
+	
+	if (path_num == 4 && _dockredir) 
+		path_num = 11;
 
 	switch (path_num) {
 	case OFF:
@@ -387,6 +399,11 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 		wm8994->ringtone_active = RING_ON;
 		path_num -= 4;
 		break;
+	case EXTRA_DOCK_SPEAKER:
+		DEBUG_LOG("routing to %s\n", mc->texts[path_num]);
+		wm8994->ringtone_active = RING_OFF;
+		path_num -= 4;
+		break;
 	default:
 		DEBUG_LOG_ERR("audio path[%d] does not exists!!\n", path_num);
 		return -ENODEV;
@@ -408,6 +425,39 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static ssize_t get_dockredir_kernel_support(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf,"%u\n",1);
+}
+
+static ssize_t store_usedock(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned short enable;
+	if (sscanf(buf, "%hu", &enable) == 1)
+	{
+		_dockredir = enable == 0 ? false : true;
+	}
+	return size;
+}
+
+static DEVICE_ATTR(usedock, S_IWUGO , NULL, store_usedock);
+static DEVICE_ATTR(dockredir_support, S_IRUGO , get_dockredir_kernel_support, NULL);
+
+static struct attribute *dockredir_attributes[] = {
+	&dev_attr_usedock.attr,
+	&dev_attr_dockredir_support.attr,
+	NULL
+};
+
+static struct attribute_group dockredir_group = {
+	.attrs = dockredir_attributes,
+};
+
+static struct miscdevice dockredir_device = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "dockredir",
+};
 
 static int wm8994_get_voice_path(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
@@ -520,6 +570,7 @@ static int wm8994_set_input_source(struct snd_kcontrol *kcontrol,
 		.private_value = SOC_SINGLE_VALUE(reg, shift, max, invert) }
 
 static const DECLARE_TLV_DB_SCALE(digital_tlv, -7162, 37, 1);
+//Here's the volume range for speaker. Will modify and test later.
 static const DECLARE_TLV_DB_LINEAR(digital_tlv_spkr, -5700, 600);
 static const DECLARE_TLV_DB_LINEAR(digital_tlv_rcv, -5700, 600);
 static const DECLARE_TLV_DB_LINEAR(digital_tlv_headphone, -5700, 600);
@@ -649,7 +700,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 		case 8000:
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x2F00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x3126);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0105);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0100);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
@@ -659,7 +710,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x1F00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x86C2);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00e5);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00e0);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -668,7 +719,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x1F00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x3126);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0105);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0100);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -677,7 +728,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x1900);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0xE23E);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0105);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0100);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -686,7 +737,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x0F00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x86C2);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00E5);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00E0);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -695,7 +746,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x0F00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x3126);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0105);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0100);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -704,7 +755,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x0C00);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0xE23E);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0105);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0100);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -713,7 +764,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x0700);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x86C2);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00E5);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x00E0);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -722,7 +773,7 @@ static int configure_clock(struct snd_soc_codec *codec)
 			wm8994_write(codec, WM8994_FLL1_CONTROL_2, 0x0700);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_3, 0x3126);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_5, 0x0C88);
-			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0105);
+			wm8994_write(codec, WM8994_FLL1_CONTROL_4, 0x0100);
 			wm8994_write(codec, WM8994_FLL1_CONTROL_1,
 				WM8994_FLL1_FRACN_ENA | WM8994_FLL1_ENA);
 			break;
@@ -1125,7 +1176,7 @@ static int wm8994_startup(struct snd_pcm_substream *substream,
 		msleep(50);
 		wm8994_write(codec, WM8994_POWER_MANAGEMENT_1,
 				WM8994_VMID_SEL_NORMAL | WM8994_BIAS_ENA);
-		wm8994_write(codec, WM8994_OVERSAMPLING, 0x0001);
+		wm8994_write(codec, WM8994_OVERSAMPLING, 0x0000);
 	} else
 		DEBUG_LOG("Already turned on codec!!");
 
@@ -2996,18 +3047,13 @@ static int wm8994_i2c_probe(struct i2c_client *i2c,
 			pr_err("Failed to request EAR_SEL!\n");
 			goto err_earsel;
 		}
-#if defined(CONFIG_SAMSUNG_CAPTIVATE)
-		gpio_direction_output(pdata->ear_sel, 1);
-#else
 		gpio_direction_output(pdata->ear_sel, 0);
-#endif
 	}
-	if (!herring_is_cdma_wimax_dev()) {
-		s3c_gpio_setpull(pdata->ear_sel, S3C_GPIO_PULL_NONE);
+	s3c_gpio_setpull(pdata->ear_sel, S3C_GPIO_PULL_NONE);
 
-		s3c_gpio_slp_cfgpin(pdata->ear_sel, S3C_GPIO_SLP_PREV);
-		s3c_gpio_slp_setpull_updown(pdata->ear_sel, S3C_GPIO_PULL_NONE);
-	}
+	s3c_gpio_slp_cfgpin(pdata->ear_sel, S3C_GPIO_SLP_PREV);
+	s3c_gpio_slp_setpull_updown(pdata->ear_sel, S3C_GPIO_PULL_NONE);
+
 	wm8994_ldo_control(pdata, 1);
 
 	codec->hw_write = (hw_write_t) i2c_master_send;
@@ -3017,10 +3063,18 @@ static int wm8994_i2c_probe(struct i2c_client *i2c,
 	control_data1 = i2c;
 
 	ret = wm8994_init(wm8994_priv, pdata);
+//voodoo sound
+#ifdef CONFIG_SND_VOODOO
+	voodoo_hook_wm8994_pcm_probe(codec);
+#endif
 	if (ret) {
 		dev_err(&i2c->dev, "failed to initialize WM8994\n");
 		goto err_init;
 	}
+	
+	misc_register(&dockredir_device);
+	sysfs_create_group(&dockredir_device.this_device->kobj, &dockredir_group);
+
 
 	return ret;
 
