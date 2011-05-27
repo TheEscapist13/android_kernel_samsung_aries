@@ -1324,7 +1324,7 @@ void wm8994_disable_path(struct snd_soc_codec *codec)
 		break;
 
 	default:
-		DEBUG_LOG_ERR("Path[%d] is not invaild!\n", path);
+		DEBUG_LOG("Path[%d] is not invaild!\n", path);
 		return;
 		break;
 	}
@@ -1442,7 +1442,7 @@ void wm8994_disable_rec_path(struct snd_soc_codec *codec)
 		break;
 
 	default:
-		DEBUG_LOG_ERR("Path[%d] is not invaild!\n", mic);
+		DEBUG_LOG("Path[%d] is not invaild!\n", mic);
 		break;
 	}
 }
@@ -3923,7 +3923,7 @@ void wm8994_disable_fmradio_path(struct snd_soc_codec *codec,
 		break;
 
 	default:
-		DEBUG_LOG_ERR("fmradio path[%d] is not invaild!\n", path);
+		DEBUG_LOG("fmradio path[%d] is not invaild!\n", path);
 		return;
 		break;
 	}
@@ -4884,7 +4884,7 @@ int wm8994_set_codec_gain(struct snd_soc_codec *codec, u16 mode, u16 device)
 			gain_set_bits |= (mode | GAIN_DIVISION_BIT_1);
 			break;
 		default:
-			DEBUG_LOG_ERR("gain_code(%d) isn't support", wm8994->gain_code);
+			DEBUG_LOG("gain_code(%d) isn't support", wm8994->gain_code);
 			return 0;
 		}
 
