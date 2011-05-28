@@ -83,8 +83,7 @@ unsigned int freq_uv_table[11][3] = {
 	{200000,	950,	950},
 	{100000,	950,	950}
 };
-//extern int enabled_freqs[8];
-//extern int update_states = 0;
+extern int enabled_freqs[11] = {1,1,1,1,1,1,1,1,1,1,1};
 	
 
 struct s5pv210_dvs_conf {
@@ -95,7 +94,7 @@ struct s5pv210_dvs_conf {
 const unsigned long arm_volt_max = 1450001;
 const unsigned long int_volt_max = 1250000;
 
-// added more voltage levels for the added frequencies
+
 static struct s5pv210_dvs_conf dvs_conf[] = {
 	[L0] = {
 		.arm_volt   = 1450000,
@@ -143,7 +142,7 @@ static struct s5pv210_dvs_conf dvs_conf[] = {
 	},
 };
 
-//more clocks 
+
 static u32 clkdiv_val[11][11] = {
 	/*{ APLL, A2M, HCLK_MSYS, PCLK_MSYS,
 	 * HCLK_DSYS, PCLK_DSYS, HCLK_PSYS, PCLK_PSYS, ONEDRAM,
@@ -173,7 +172,7 @@ static u32 clkdiv_val[11][11] = {
 	{7, 7, 0, 0, 7, 0, 9, 0, 7, 0, 0},
 };
 
-//And even more clocks
+
 static struct s3c_freq clk_info[] = {
 	 [L0] = {        /* L0: 1.6GHz */
                 .fclk       = 1550000,
@@ -184,7 +183,7 @@ static struct s3c_freq clk_info[] = {
                 .hclk_msys  = 216216,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
-                .pclk_dsys  = 83375
+                .pclk_dsys  = 83375,
          },
 	 [L1] = {        /* L0: 1.5GHz */
                 .fclk       = 1500000,
@@ -195,7 +194,7 @@ static struct s3c_freq clk_info[] = {
                 .hclk_msys  = 214785,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
-                .pclk_dsys  = 83375
+                .pclk_dsys  = 83375,
          },
 	 [L2] = {        /* L0: 1.4GHz */
                 .fclk       = 1400000,
@@ -206,7 +205,7 @@ static struct s3c_freq clk_info[] = {
                 .hclk_msys  = 233333,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
-                .pclk_dsys  = 83375
+                .pclk_dsys  = 83375,
         },
 	[L3] = {
 		.fclk       = 1300000,
@@ -491,6 +490,7 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 	unsigned int pll_changing = 0;
 	unsigned int bus_speed_changing = 0;
 
+
 	mutex_lock(&set_freq_lock);
 
 	cpufreq_debug_printk(CPUFREQ_DEBUG_DRIVER, KERN_INFO,
@@ -531,6 +531,9 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 
 	s3c_freqs.freqs.new = arm_clk;
 	s3c_freqs.freqs.cpu = 0;
+
+	if(enabled_freqs[index] == 0) 
+		goto out;
 
 	/*
 	 * Run this function unconditionally until s3c_freqs.freqs.new
