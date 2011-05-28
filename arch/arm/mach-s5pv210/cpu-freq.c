@@ -83,7 +83,7 @@ unsigned int freq_uv_table[11][3] = {
 	{200000,	950,	950},
 	{100000,	950,	950}
 };
-extern int enabled_freqs[11] = {1,1,1,1,1,1,1,1,1,1,1};
+extern int enabled_freqs[11];
 	
 
 struct s5pv210_dvs_conf {
