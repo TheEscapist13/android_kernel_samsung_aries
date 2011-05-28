@@ -514,6 +514,7 @@ struct thread_group_cputimer {
 };
 
 struct autogroup;
+
 /*
  * NOTE! "signal_struct" does not have it's own
  * locking, because a shared signal_struct always
@@ -582,7 +583,7 @@ struct signal_struct {
 	struct tty_struct *tty; /* NULL if no tty */
 
 #ifdef CONFIG_SCHED_AUTOGROUP
-  struct autogroup *autogroup;	 	
+	struct autogroup *autogroup;     
 #endif
 
 	/*
@@ -1082,8 +1083,7 @@ struct sched_class {
 					 struct task_struct *task);
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
-	void (*moved_group) (struct task_struct *p, int on_rq);
-	void (*prep_move_group) (struct task_struct *p, int on_rq);
+	void (*task_move_group) (struct task_struct *p, int on_rq);
 #endif
 };
 
@@ -1932,6 +1932,7 @@ static inline void sched_autogroup_detach(struct task_struct *p) { }
 static inline void sched_autogroup_fork(struct signal_struct *sig) { }
 static inline void sched_autogroup_exit(struct signal_struct *sig) { }
 #endif
+
 
 #ifdef CONFIG_RT_MUTEXES
 extern int rt_mutex_getprio(struct task_struct *p);
