@@ -42,6 +42,7 @@
 #define DEVICE_NAME "cypress-touchkey"
 
 
+
 struct cypress_touchkey_devdata {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
@@ -76,10 +77,9 @@ static int i2c_touchkey_read_byte(struct cypress_touchkey_devdata *devdata,
 			return 0;
 		}
 
-		if (!retry--) {
-            dev_err(&devdata->client->dev, "i2c read error\n");
+		dev_err(&devdata->client->dev, "i2c read error\n");
+		if (!retry--)
 			break;
-        }
 		msleep(10);
 	}
 
@@ -97,10 +97,9 @@ static int i2c_touchkey_write_byte(struct cypress_touchkey_devdata *devdata,
 		if (!ret)
 			return 0;
 
-		if (!retry--) {
-            dev_err(&devdata->client->dev, "i2c write error\n");
+		dev_err(&devdata->client->dev, "i2c write error\n");
+		if (!retry--)
 			break;
-        }
 		msleep(10);
 	}
 
@@ -117,7 +116,6 @@ static void all_keys_up(struct cypress_touchkey_devdata *devdata)
 
 	input_sync(devdata->input_dev);
 }
-
 
 static int recovery_routine(struct cypress_touchkey_devdata *devdata)
 {
@@ -194,7 +192,6 @@ static irqreturn_t touchkey_interrupt_thread(int irq, void *touchkey_devdata)
 	}
 
 	input_sync(devdata->input_dev);
-
 err:
 	dev_err(&devdata->client->dev, "%s: touchkey_interrupt_thread\n", __func__);
 	return IRQ_HANDLED;
@@ -221,7 +218,6 @@ static irqreturn_t touchkey_interrupt_handler(int irq, void *touchkey_devdata)
 	return IRQ_WAKE_THREAD;
 }
 
-
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void cypress_touchkey_early_suspend(struct early_suspend *h)
 {
@@ -245,11 +241,6 @@ static void cypress_touchkey_early_suspend(struct early_suspend *h)
 		all_keys_up(devdata);
 	}
 	
-	disable_irq(devdata->client->irq);
-	devdata->pdata->touchkey_onoff(TOUCHKEY_OFF);
-	all_keys_up(devdata);
-	devdata->is_sleeping = true;
-
 }
 
 static void cypress_touchkey_early_resume(struct early_suspend *h)
@@ -382,6 +373,7 @@ static int cypress_touchkey_probe(struct i2c_client *client,
 #ifdef CONFIG_BACKLIGHT_NOTIFICATION
 	blndevdata = devdata;
 #endif
+
 
 	return 0;
 
