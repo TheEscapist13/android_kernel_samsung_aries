@@ -179,7 +179,7 @@ int wm8994_write(struct snd_soc_codec *codec, unsigned int reg,
 	u8 data[4];
 	int ret;
 
-//voodoo sound
+
 #ifdef CONFIG_SND_VOODOO
 	value = voodoo_hook_wm8994_write(codec, reg, value);
 #endif
@@ -436,7 +436,7 @@ static int wm8994_set_path(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-<<<<<<< HEAD
+
 static ssize_t get_dockredir_kernel_support(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf,"%u\n",1);
@@ -469,7 +469,7 @@ static struct miscdevice dockredir_device = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "dockredir",
 };
-=======
+
 static int wm8994_get_fmradio_path(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -623,7 +623,7 @@ static int wm8994_set_codec_status(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
->>>>>>> android-samsung-2.6.35
+
 
 static int wm8994_get_voice_path(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
