@@ -688,7 +688,7 @@ static ssize_t show_frequency_voltage_table(struct cpufreq_policy *policy,
 	freq_uv_table[7][0], freq_uv_table[7][1], freq_uv_table[7][2],
 	freq_uv_table[8][0], freq_uv_table[8][1], freq_uv_table[8][2],
 	freq_uv_table[9][0], freq_uv_table[9][1], freq_uv_table[9][2],
-	freq_uv_table[10][0], freq_uv_table[10][1], freq_uv_table[10][2]
+	freq_uv_table[10][0], freq_uv_table[10][1], freq_uv_table[10][2],
 	freq_uv_table[11][0], freq_uv_table[11][1], freq_uv_table[11][2]);
 
 }
