@@ -36,9 +36,10 @@
 #include <linux/iova.h>
 #include <linux/iommu.h>
 #include <linux/intel-iommu.h>
-#include <linux/sysdev.h>
+#include <linux/syscore_ops.h>
 #include <linux/tboot.h>
 #include <linux/dmi.h>
+#include <linux/pci-ats.h>
 #include <asm/cacheflush.h>
 #include <asm/iommu.h>
 #include "pci.h"
@@ -279,7 +280,7 @@ static inline u64 dma_pte_addr(struct dma_pte *pte)
 	return pte->val & VTD_PAGE_MASK;
 #else
 	/* Must have a full atomic 64-bit read */
-	return  __cmpxchg64(pte, 0ULL, 0ULL) & VTD_PAGE_MASK;
+	return  __cmpxchg64(&pte->val, 0ULL, 0ULL) & VTD_PAGE_MASK;
 #endif
 }
 
@@ -1206,7 +1207,7 @@ void free_dmar_iommu(struct intel_iommu *iommu)
 		iommu_disable_translation(iommu);
 
 	if (iommu->irq) {
-		set_irq_data(iommu->irq, NULL);
+		irq_set_handler_data(iommu->irq, NULL);
 		/* This will mask the irq */
 		free_irq(iommu->irq, iommu);
 		destroy_irq(iommu->irq);
@@ -1299,7 +1300,7 @@ static void iommu_detach_domain(struct dmar_domain *domain,
 static struct iova_domain reserved_iova_list;
 static struct lock_class_key reserved_rbtree_key;
 
-static void dmar_init_reserved_ranges(void)
+static int dmar_init_reserved_ranges(void)
 {
 	struct pci_dev *pdev = NULL;
 	struct iova *iova;
@@ -1313,8 +1314,10 @@ static void dmar_init_reserved_ranges(void)
 	/* IOAPIC ranges shouldn't be accessed by DMA */
 	iova = reserve_iova(&reserved_iova_list, IOVA_PFN(IOAPIC_RANGE_START),
 		IOVA_PFN(IOAPIC_RANGE_END));
-	if (!iova)
+	if (!iova) {
 		printk(KERN_ERR "Reserve IOAPIC range failed\n");
+		return -ENODEV;
+	}
 
 	/* Reserve all PCI MMIO to avoid peer-to-peer access */
 	for_each_pci_dev(pdev) {
@@ -1327,11 +1330,13 @@ static void dmar_init_reserved_ranges(void)
 			iova = reserve_iova(&reserved_iova_list,
 					    IOVA_PFN(r->start),
 					    IOVA_PFN(r->end));
-			if (!iova)
+			if (!iova) {
 				printk(KERN_ERR "Reserve iova failed\n");
+				return -ENODEV;
+			}
 		}
 	}
-
+	return 0;
 }
 
 static void domain_reserve_special_ranges(struct dmar_domain *domain)
@@ -2213,7 +2218,7 @@ static int __init iommu_prepare_static_identity_mapping(int hw)
 	return 0;
 }
 
-int __init init_dmars(void)
+static int __init init_dmars(int force_on)
 {
 	struct dmar_drhd_unit *drhd;
 	struct dmar_rmrr_unit *rmrr;
@@ -2265,7 +2270,7 @@ int __init init_dmars(void)
 		/*
 		 * TBD:
 		 * we could share the same root & context tables
-		 * amoung all IOMMU's. Need to Split it later.
+		 * among all IOMMU's. Need to Split it later.
 		 */
 		ret = iommu_alloc_root_entry(iommu);
 		if (ret) {
@@ -2393,8 +2398,15 @@ int __init init_dmars(void)
 	 *   enable translation
 	 */
 	for_each_drhd_unit(drhd) {
-		if (drhd->ignored)
+		if (drhd->ignored) {
+			/*
+			 * we always have to disable PMRs or DMA may fail on
+			 * this device
+			 */
+			if (force_on)
+				iommu_disable_protect_mem_regions(drhd->iommu);
 			continue;
+		}
 		iommu = drhd->iommu;
 
 		iommu_flush_write_buffer(iommu);
@@ -3135,7 +3147,7 @@ static void iommu_flush_all(void)
 	}
 }
 
-static int iommu_suspend(struct sys_device *dev, pm_message_t state)
+static int iommu_suspend(void)
 {
 	struct dmar_drhd_unit *drhd;
 	struct intel_iommu *iommu = NULL;
@@ -3175,7 +3187,7 @@ nomem:
 	return -ENOMEM;
 }
 
-static int iommu_resume(struct sys_device *dev)
+static void iommu_resume(void)
 {
 	struct dmar_drhd_unit *drhd;
 	struct intel_iommu *iommu = NULL;
@@ -3183,7 +3195,7 @@ static int iommu_resume(struct sys_device *dev)
 
 	if (init_iommu_hw()) {
 		WARN(1, "IOMMU setup failed, DMAR can not resume!\n");
-		return -EIO;
+		return;
 	}
 
 	for_each_active_iommu(iommu, drhd) {
@@ -3204,40 +3216,20 @@ static int iommu_resume(struct sys_device *dev)
 
 	for_each_active_iommu(iommu, drhd)
 		kfree(iommu->iommu_state);
-
-	return 0;
 }
 
-static struct sysdev_class iommu_sysclass = {
-	.name		= "iommu",
+static struct syscore_ops iommu_syscore_ops = {
 	.resume		= iommu_resume,
 	.suspend	= iommu_suspend,
 };
 
-static struct sys_device device_iommu = {
-	.cls	= &iommu_sysclass,
-};
-
-static int __init init_iommu_sysfs(void)
+static void __init init_iommu_pm_ops(void)
 {
-	int error;
-
-	error = sysdev_class_register(&iommu_sysclass);
-	if (error)
-		return error;
-
-	error = sysdev_register(&device_iommu);
-	if (error)
-		sysdev_class_unregister(&iommu_sysclass);
-
-	return error;
+	register_syscore_ops(&iommu_syscore_ops);
 }
 
 #else
-static int __init init_iommu_sysfs(void)
-{
-	return 0;
-}
+static inline int init_iommu_pm_ops(void) { }
 #endif	/* CONFIG_PM */
 
 /*
@@ -3303,12 +3295,21 @@ int __init intel_iommu_init(void)
 	if (no_iommu || dmar_disabled)
 		return -ENODEV;
 
-	iommu_init_mempool();
-	dmar_init_reserved_ranges();
+	if (iommu_init_mempool()) {
+		if (force_on)
+			panic("tboot: Failed to initialize iommu memory\n");
+		return 	-ENODEV;
+	}
+
+	if (dmar_init_reserved_ranges()) {
+		if (force_on)
+			panic("tboot: Failed to reserve iommu ranges\n");
+		return 	-ENODEV;
+	}
 
 	init_no_remapping_devices();
 
-	ret = init_dmars();
+	ret = init_dmars(force_on);
 	if (ret) {
 		if (force_on)
 			panic("tboot: Failed to initialize DMARs\n");
@@ -3326,7 +3327,7 @@ int __init intel_iommu_init(void)
 #endif
 	dma_ops = &intel_dma_ops;
 
-	init_iommu_sysfs();
+	init_iommu_pm_ops();
 
 	register_iommu(&intel_iommu_ops);
 
@@ -3733,6 +3734,8 @@ static int intel_iommu_domain_has_cap(struct iommu_domain *domain,
 
 	if (cap == IOMMU_CAP_CACHE_COHERENCY)
 		return dmar_domain->iommu_snooping;
+	if (cap == IOMMU_CAP_INTR_REMAP)
+		return intr_remapping_enabled;
 
 	return 0;
 }
@@ -3765,6 +3768,33 @@ static void __devinit quirk_iommu_rwbf(struct pci_dev *dev)
 }
 
 DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x2a40, quirk_iommu_rwbf);
+
+#define GGC 0x52
+#define GGC_MEMORY_SIZE_MASK	(0xf << 8)
+#define GGC_MEMORY_SIZE_NONE	(0x0 << 8)
+#define GGC_MEMORY_SIZE_1M	(0x1 << 8)
+#define GGC_MEMORY_SIZE_2M	(0x3 << 8)
+#define GGC_MEMORY_VT_ENABLED	(0x8 << 8)
+#define GGC_MEMORY_SIZE_2M_VT	(0x9 << 8)
+#define GGC_MEMORY_SIZE_3M_VT	(0xa << 8)
+#define GGC_MEMORY_SIZE_4M_VT	(0xb << 8)
+
+static void __devinit quirk_calpella_no_shadow_gtt(struct pci_dev *dev)
+{
+	unsigned short ggc;
+
+	if (pci_read_config_word(dev, GGC, &ggc))
+		return;
+
+	if (!(ggc & GGC_MEMORY_VT_ENABLED)) {
+		printk(KERN_INFO "DMAR: BIOS has allocated no shadow GTT; disabling IOMMU for graphics\n");
+		dmar_map_gfx = 0;
+	}
+}
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x0040, quirk_calpella_no_shadow_gtt);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x0044, quirk_calpella_no_shadow_gtt);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x0062, quirk_calpella_no_shadow_gtt);
+DECLARE_PCI_FIXUP_HEADER(PCI_VENDOR_ID_INTEL, 0x006a, quirk_calpella_no_shadow_gtt);
 
 /* On Tylersburg chipsets, some BIOSes have been known to enable the
    ISOCH DMAR unit for the Azalia sound device, but not give it any

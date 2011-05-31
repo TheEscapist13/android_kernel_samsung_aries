@@ -79,7 +79,11 @@ static inline int ksm_might_need_to_copy(struct page *page,
 	struct anon_vma *anon_vma = page_anon_vma(page);
 
 	return anon_vma &&
+<<<<<<< HEAD
 		(anon_vma != vma->anon_vma ||
+=======
+		(anon_vma->root != vma->anon_vma->root ||
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 		 page->index != linear_page_index(vma, address));
 }
 

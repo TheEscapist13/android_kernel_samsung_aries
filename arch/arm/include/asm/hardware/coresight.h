@@ -21,7 +21,10 @@
 #define TRACER_ACCESSED		BIT(TRACER_ACCESSED_BIT)
 #define TRACER_RUNNING		BIT(TRACER_RUNNING_BIT)
 #define TRACER_CYCLE_ACC	BIT(TRACER_CYCLE_ACC_BIT)
+<<<<<<< HEAD
 #define TRACER_TRACE_DATA	BIT(TRACER_TRACE_DATA_BIT)
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 #define TRACER_TIMEOUT 10000
 
@@ -126,8 +129,11 @@
 				ETMCTRL_BRANCH_OUTPUT | \
 				ETMCTRL_DO_CONTEXTID)
 
+<<<<<<< HEAD
 #define ETMR_TRACEIDR		0x200
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 /* ETM management registers, "ETM Architecture", 3.5.24 */
 #define ETMMR_OSLAR	0x300
 #define ETMMR_OSLSR	0x304
@@ -150,7 +156,10 @@
 #define ETBFF_TRIGIN		BIT(8)
 #define ETBFF_TRIGEVT		BIT(9)
 #define ETBFF_TRIGFL		BIT(10)
+<<<<<<< HEAD
 #define ETBFF_STOPFL		BIT(12)
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 #define etb_writel(t, v, x) \
 	(__raw_writel((v), (t)->etb_regs + (x)))

@@ -76,7 +76,7 @@
  * 	tty device.  It is solely the responsibility of the line
  * 	discipline to handle poll requests.
  *
- * void	(*receive_buf)(struct tty_struct *, const unsigned char *cp,
+ * unsigned int (*receive_buf)(struct tty_struct *, const unsigned char *cp,
  * 		       char *fp, int count);
  *
  * 	This function is called by the low-level tty driver to send
@@ -84,7 +84,8 @@
  * 	processing.  <cp> is a pointer to the buffer of input
  * 	character received by the device.  <fp> is a pointer to a
  * 	pointer of flag bytes which indicate whether a character was
- * 	received with a parity error, etc.
+ * 	received with a parity error, etc. Returns the amount of bytes
+ * 	received.
  * 
  * void	(*write_wakeup)(struct tty_struct *);
  *
@@ -101,14 +102,15 @@
  *	any pending driver I/O is completed.
  *
  * void (*dcd_change)(struct tty_struct *tty, unsigned int status,
- * 			struct timespec *ts)
+ *			struct pps_event_time *ts)
  *
  *	Tells the discipline that the DCD pin has changed its status and
- *	the relative timestamp. Pointer ts can be NULL.
+ *	the relative timestamp. Pointer ts cannot be NULL.
  */
 
 #include <linux/fs.h>
 #include <linux/wait.h>
+#include <linux/pps_kernel.h>
 
 struct tty_ldisc_ops {
 	int	magic;
@@ -139,11 +141,11 @@ struct tty_ldisc_ops {
 	/*
 	 * The following routines are called from below.
 	 */
-	void	(*receive_buf)(struct tty_struct *, const unsigned char *cp,
-			       char *fp, int count);
+	unsigned int (*receive_buf)(struct tty_struct *,
+			const unsigned char *cp, char *fp, int count);
 	void	(*write_wakeup)(struct tty_struct *);
 	void	(*dcd_change)(struct tty_struct *, unsigned int,
-				struct timespec *);
+				struct pps_event_time *);
 
 	struct  module *owner;
 	

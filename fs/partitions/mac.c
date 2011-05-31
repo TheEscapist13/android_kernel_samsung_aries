@@ -63,7 +63,11 @@ int mac_partition(struct parsed_partitions *state)
 		put_dev_sector(sect);
 		return 0;
 	}
+<<<<<<< HEAD
 	printk(" [mac]");
+=======
+	strlcat(state->pp_buf, " [mac]", PAGE_SIZE);
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	for (slot = 1; slot <= blocks_in_map; ++slot) {
 		int pos = slot * secsize;
 		put_dev_sector(sect);
@@ -129,6 +133,6 @@ int mac_partition(struct parsed_partitions *state)
 #endif
 
 	put_dev_sector(sect);
-	printk("\n");
+	strlcat(state->pp_buf, "\n", PAGE_SIZE);
 	return 1;
 }

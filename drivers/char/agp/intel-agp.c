@@ -14,8 +14,6 @@
 #include "intel-agp.h"
 #include <linux/intel-gtt.h>
 
-#include "intel-gtt.c"
-
 int intel_agp_enabled;
 EXPORT_SYMBOL(intel_agp_enabled);
 
@@ -703,34 +701,16 @@ static const struct agp_bridge_driver intel_7505_driver = {
 	.agp_type_to_mask_type  = agp_generic_type_to_mask_type,
 };
 
-static int find_gmch(u16 device)
-{
-	struct pci_dev *gmch_device;
-
-	gmch_device = pci_get_device(PCI_VENDOR_ID_INTEL, device, NULL);
-	if (gmch_device && PCI_FUNC(gmch_device->devfn) != 0) {
-		gmch_device = pci_get_device(PCI_VENDOR_ID_INTEL,
-					     device, gmch_device);
-	}
-
-	if (!gmch_device)
-		return 0;
-
-	intel_private.pcidev = gmch_device;
-	return 1;
-}
-
 /* Table to describe Intel GMCH and AGP/PCIE GART drivers.  At least one of
  * driver and gmch_driver must be non-null, and find_gmch will determine
  * which one should be used if a gmch_chip_id is present.
  */
-static const struct intel_driver_description {
+static const struct intel_agp_driver_description {
 	unsigned int chip_id;
-	unsigned int gmch_chip_id;
 	char *name;
 	const struct agp_bridge_driver *driver;
-	const struct agp_bridge_driver *gmch_driver;
 } intel_agp_chipsets[] = {
+<<<<<<< HEAD
 	{ PCI_DEVICE_ID_INTEL_82443LX_0, 0, "440LX", &intel_generic_driver, NULL },
 	{ PCI_DEVICE_ID_INTEL_82443BX_0, 0, "440BX", &intel_generic_driver, NULL },
 	{ PCI_DEVICE_ID_INTEL_82443GX_0, 0, "440GX", &intel_generic_driver, NULL },
@@ -875,6 +855,30 @@ static int __devinit intel_gmch_probe(struct pci_dev *pdev,
 	return 1;
 }
 
+=======
+	{ PCI_DEVICE_ID_INTEL_82443LX_0, "440LX", &intel_generic_driver },
+	{ PCI_DEVICE_ID_INTEL_82443BX_0, "440BX", &intel_generic_driver },
+	{ PCI_DEVICE_ID_INTEL_82443GX_0, "440GX", &intel_generic_driver },
+	{ PCI_DEVICE_ID_INTEL_82815_MC, "i815", &intel_815_driver },
+	{ PCI_DEVICE_ID_INTEL_82820_HB, "i820", &intel_820_driver },
+	{ PCI_DEVICE_ID_INTEL_82820_UP_HB, "i820", &intel_820_driver },
+	{ PCI_DEVICE_ID_INTEL_82830_HB, "830M", &intel_830mp_driver },
+	{ PCI_DEVICE_ID_INTEL_82840_HB, "i840", &intel_840_driver },
+	{ PCI_DEVICE_ID_INTEL_82845_HB, "i845", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_82845G_HB, "845G", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_82850_HB, "i850", &intel_850_driver },
+	{ PCI_DEVICE_ID_INTEL_82854_HB, "854", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_82855PM_HB, "855PM", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_82855GM_HB, "855GM", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_82860_HB, "i860", &intel_860_driver },
+	{ PCI_DEVICE_ID_INTEL_82865_HB, "865", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_82875_HB, "i875", &intel_845_driver },
+	{ PCI_DEVICE_ID_INTEL_7505_0, "E7505", &intel_7505_driver },
+	{ PCI_DEVICE_ID_INTEL_7205_0, "E7205", &intel_7505_driver },
+	{ 0, NULL, NULL }
+};
+
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 static int __devinit agp_intel_probe(struct pci_dev *pdev,
 				     const struct pci_device_id *ent)
 {
@@ -904,18 +908,10 @@ static int __devinit agp_intel_probe(struct pci_dev *pdev,
 		}
 	}
 
-	if (intel_agp_chipsets[i].name == NULL) {
+	if (!bridge->driver) {
 		if (cap_ptr)
 			dev_warn(&pdev->dev, "unsupported Intel chipset [%04x/%04x]\n",
 				 pdev->vendor, pdev->device);
-		agp_put_bridge(bridge);
-		return -ENODEV;
-	}
-
-	if (!bridge->driver) {
-		if (cap_ptr)
-			dev_warn(&pdev->dev, "can't find bridge device (chip_id: %04x)\n",
-			    	 intel_agp_chipsets[i].gmch_chip_id);
 		agp_put_bridge(bridge);
 		return -ENODEV;
 	}
@@ -929,6 +925,11 @@ static int __devinit agp_intel_probe(struct pci_dev *pdev,
 	* The following fixes the case where the BIOS has "forgotten" to
 	* provide an address range for the GART.
 	* 20030610 - hamish@zot.org
+	* This happens before pci_enable_device() intentionally;
+	* calling pci_enable_device() before assigning the resource
+	* will result in the GART being disabled on machines with such
+	* BIOSs (the GART ends up with a BAR starting at 0, which
+	* conflicts a lot of other devices).
 	*/
 	r = &pdev->resource[0];
 	if (!r->start && r->end) {
@@ -971,8 +972,7 @@ static void __devexit agp_intel_remove(struct pci_dev *pdev)
 
 	agp_remove_bridge(bridge);
 
-	if (intel_private.pcidev)
-		pci_dev_put(intel_private.pcidev);
+	intel_gmch_remove(pdev);
 
 	agp_put_bridge(bridge);
 }
@@ -981,13 +981,8 @@ static void __devexit agp_intel_remove(struct pci_dev *pdev)
 static int agp_intel_resume(struct pci_dev *pdev)
 {
 	struct agp_bridge_data *bridge = pci_get_drvdata(pdev);
-	int ret_val;
 
 	bridge->driver->configure();
-
-	ret_val = agp_rebind_memory();
-	if (ret_val != 0)
-		return ret_val;
 
 	return 0;
 }
@@ -1056,6 +1051,12 @@ static struct pci_device_id agp_intel_pci_table[] = {
 	ID(PCI_DEVICE_ID_INTEL_SANDYBRIDGE_HB),
 	ID(PCI_DEVICE_ID_INTEL_SANDYBRIDGE_M_HB),
 	ID(PCI_DEVICE_ID_INTEL_SANDYBRIDGE_S_HB),
+<<<<<<< HEAD
+=======
+	ID(PCI_DEVICE_ID_INTEL_IVYBRIDGE_HB),
+	ID(PCI_DEVICE_ID_INTEL_IVYBRIDGE_M_HB),
+	ID(PCI_DEVICE_ID_INTEL_IVYBRIDGE_S_HB),
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	{ }
 };
 

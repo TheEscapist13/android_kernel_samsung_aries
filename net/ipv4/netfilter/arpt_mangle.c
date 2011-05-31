@@ -63,7 +63,11 @@ static int checkentry(const struct xt_tgchk_param *par)
 		return -EINVAL;
 
 	if (mangle->target != NF_DROP && mangle->target != NF_ACCEPT &&
+<<<<<<< HEAD
 	   mangle->target != ARPT_CONTINUE)
+=======
+	   mangle->target != XT_CONTINUE)
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 		return -EINVAL;
 	return 0;
 }

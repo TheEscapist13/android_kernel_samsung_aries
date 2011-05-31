@@ -1,5 +1,6 @@
 #include <linux/pagemap.h>
 #include <linux/blkdev.h>
+#include <linux/genhd.h>
 
 #define PART_NAME_SIZE 128
 
@@ -14,11 +15,17 @@ struct parsed_partitions {
 		sector_t from;
 		sector_t size;
 		int flags;
+<<<<<<< HEAD
 		char name[PART_NAME_SIZE];
+=======
+		bool has_info;
+		struct partition_meta_info info;
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	} parts[DISK_MAX_PARTS];
 	int next;
 	int limit;
 	bool access_beyond_eod;
+	char *pp_buf;
 };
 
 static inline void *read_part_sector(struct parsed_partitions *state,
@@ -36,8 +43,11 @@ put_named_partition(struct parsed_partitions *p, int n, sector_t from,
 	sector_t size, const char *name, size_t name_size)
 {
 	if (n < p->limit) {
+		char tmp[1 + BDEVNAME_SIZE + 10 + 1];
+
 		p->parts[n].from = from;
 		p->parts[n].size = size;
+<<<<<<< HEAD
 		printk(" %s%d", p->name, n);
 		if (name) {
 			if (name_size > PART_NAME_SIZE - 1)
@@ -46,6 +56,10 @@ put_named_partition(struct parsed_partitions *p, int n, sector_t from,
 			p->parts[n].name[name_size] = 0;
 			printk(" (%s)", p->parts[n].name);
 		}
+=======
+		snprintf(tmp, sizeof(tmp), " %s%d", p->name, n);
+		strlcat(p->pp_buf, tmp, PAGE_SIZE);
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	}
 }
 

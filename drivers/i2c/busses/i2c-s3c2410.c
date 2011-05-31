@@ -24,7 +24,6 @@
 #include <linux/module.h>
 
 #include <linux/i2c.h>
-#include <linux/i2c-id.h>
 #include <linux/init.h>
 #include <linux/time.h>
 #include <linux/interrupt.h>
@@ -550,8 +549,15 @@ static int s3c24xx_i2c_xfer(struct i2c_adapter *adap,
 
 		ret = s3c24xx_i2c_doxfer(i2c, msgs, num);
 
+<<<<<<< HEAD
 		if (ret != -EAGAIN)
 			goto out;
+=======
+		if (ret != -EAGAIN) {
+			clk_disable(i2c->clk);
+			return ret;
+		}
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 		dev_dbg(i2c->dev, "Retrying transmission (%d)\n", retry);
 
@@ -561,7 +567,12 @@ static int s3c24xx_i2c_xfer(struct i2c_adapter *adap,
 out:
 	clk_disable(i2c->clk);
 
+<<<<<<< HEAD
 	return ret;
+=======
+	clk_disable(i2c->clk);
+	return -EREMOTEIO;
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 }
 
 /* declare our i2c functionality */
@@ -652,6 +663,26 @@ static int s3c24xx_i2c_clockrate(struct s3c24xx_i2c *i2c, unsigned int *got)
 
 	writel(iiccon, i2c->regs + S3C2410_IICCON);
 
+<<<<<<< HEAD
+=======
+	if (s3c24xx_i2c_is2440(i2c)) {
+		unsigned long sda_delay;
+
+		if (pdata->sda_delay) {
+			sda_delay = clkin * pdata->sda_delay;
+			sda_delay = DIV_ROUND_UP(sda_delay, 1000000);
+			sda_delay = DIV_ROUND_UP(sda_delay, 5);
+			if (sda_delay > 3)
+				sda_delay = 3;
+			sda_delay |= S3C2410_IICLC_FILTER_ON;
+		} else
+			sda_delay = 0;
+
+		dev_dbg(i2c->dev, "IICLC=%08lx\n", sda_delay);
+		writel(sda_delay, i2c->regs + S3C2440_IICLC);
+	}
+
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	return 0;
 }
 
@@ -898,6 +929,7 @@ static int s3c24xx_i2c_probe(struct platform_device *pdev)
 	clk_disable(i2c->clk);
 
 	dev_info(&pdev->dev, "%s: S3C I2C adapter\n", dev_name(&i2c->adap.dev));
+	clk_disable(i2c->clk);
 	return 0;
 
  err_cpufreq:
@@ -965,7 +997,10 @@ static int s3c24xx_i2c_resume(struct device *dev)
 	struct s3c24xx_i2c *i2c = platform_get_drvdata(pdev);
 
 	i2c->suspended = 0;
+<<<<<<< HEAD
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	clk_enable(i2c->clk);
 	s3c24xx_i2c_init(i2c);
 	clk_disable(i2c->clk);

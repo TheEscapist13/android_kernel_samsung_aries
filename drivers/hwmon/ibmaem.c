@@ -20,6 +20,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include <linux/ipmi.h>
 #include <linux/module.h>
 #include <linux/hwmon.h>
@@ -521,7 +523,7 @@ static void aem_delete(struct aem_data *data)
 	aem_remove_sensors(data);
 	hwmon_device_unregister(data->hwmon_dev);
 	ipmi_destroy_user(data->ipmi.user);
-	dev_set_drvdata(&data->pdev->dev, NULL);
+	platform_set_drvdata(data->pdev, NULL);
 	platform_device_unregister(data->pdev);
 	aem_idr_put(data->id);
 	kfree(data);
@@ -592,7 +594,7 @@ static int aem_init_aem1_inst(struct aem_ipmi_data *probe, u8 module_handle)
 	if (res)
 		goto ipmi_err;
 
-	dev_set_drvdata(&data->pdev->dev, data);
+	platform_set_drvdata(data->pdev, data);
 
 	/* Set up IPMI interface */
 	if (aem_init_ipmi_data(&data->ipmi, probe->interface,
@@ -628,7 +630,7 @@ sensor_err:
 hwmon_reg_err:
 	ipmi_destroy_user(data->ipmi.user);
 ipmi_err:
-	dev_set_drvdata(&data->pdev->dev, NULL);
+	platform_set_drvdata(data->pdev, NULL);
 	platform_device_unregister(data->pdev);
 dev_err:
 	aem_idr_put(data->id);
@@ -725,7 +727,7 @@ static int aem_init_aem2_inst(struct aem_ipmi_data *probe,
 	if (res)
 		goto ipmi_err;
 
-	dev_set_drvdata(&data->pdev->dev, data);
+	platform_set_drvdata(data->pdev, data);
 
 	/* Set up IPMI interface */
 	if (aem_init_ipmi_data(&data->ipmi, probe->interface,
@@ -761,7 +763,7 @@ sensor_err:
 hwmon_reg_err:
 	ipmi_destroy_user(data->ipmi.user);
 ipmi_err:
-	dev_set_drvdata(&data->pdev->dev, NULL);
+	platform_set_drvdata(data->pdev, NULL);
 	platform_device_unregister(data->pdev);
 dev_err:
 	aem_idr_put(data->id);
@@ -1090,7 +1092,7 @@ static int __init aem_init(void)
 
 	res = driver_register(&aem_driver.driver);
 	if (res) {
-		printk(KERN_ERR "Can't register aem driver\n");
+		pr_err("Can't register aem driver\n");
 		return res;
 	}
 

@@ -24,6 +24,7 @@
 #include <linux/ioport.h>
 #include <linux/io.h>
 #include <linux/clk.h>
+#include <linux/pm_runtime.h>
 #include <linux/irq.h>
 #include <linux/err.h>
 #include <linux/clocksource.h>
@@ -152,10 +153,12 @@ static int sh_cmt_enable(struct sh_cmt_priv *p, unsigned long *rate)
 {
 	int ret;
 
-	/* enable clock */
+	/* wake up device and enable clock */
+	pm_runtime_get_sync(&p->pdev->dev);
 	ret = clk_enable(p->clk);
 	if (ret) {
 		dev_err(&p->pdev->dev, "cannot enable clock\n");
+		pm_runtime_put_sync(&p->pdev->dev);
 		return ret;
 	}
 
@@ -187,8 +190,9 @@ static void sh_cmt_disable(struct sh_cmt_priv *p)
 	/* disable interrupts in CMT block */
 	sh_cmt_write(p, CMCSR, 0);
 
-	/* stop clock */
+	/* stop clock and mark device as idle */
 	clk_disable(p->clk);
+	pm_runtime_put_sync(&p->pdev->dev);
 }
 
 /* private flags */
@@ -283,16 +287,21 @@ static void sh_cmt_clock_event_program_verify(struct sh_cmt_priv *p,
 	} while (delay);
 }
 
+static void __sh_cmt_set_next(struct sh_cmt_priv *p, unsigned long delta)
+{
+	if (delta > p->max_match_value)
+		dev_warn(&p->pdev->dev, "delta out of range\n");
+
+	p->next_match_value = delta;
+	sh_cmt_clock_event_program_verify(p, 0);
+}
+
 static void sh_cmt_set_next(struct sh_cmt_priv *p, unsigned long delta)
 {
 	unsigned long flags;
 
-	if (delta > p->max_match_value)
-		dev_warn(&p->pdev->dev, "delta out of range\n");
-
 	spin_lock_irqsave(&p->lock, flags);
-	p->next_match_value = delta;
-	sh_cmt_clock_event_program_verify(p, 0);
+	__sh_cmt_set_next(p, delta);
 	spin_unlock_irqrestore(&p->lock, flags);
 }
 
@@ -308,7 +317,7 @@ static irqreturn_t sh_cmt_interrupt(int irq, void *dev_id)
 	 * isr before we end up here.
 	 */
 	if (p->flags & FLAG_CLOCKSOURCE)
-		p->total_cycles += p->match_value;
+		p->total_cycles += p->match_value + 1;
 
 	if (!(p->flags & FLAG_REPROGRAM))
 		p->next_match_value = p->max_match_value;
@@ -359,7 +368,7 @@ static int sh_cmt_start(struct sh_cmt_priv *p, unsigned long flag)
 
 	/* setup timeout if no clockevent */
 	if ((flag == FLAG_CLOCKSOURCE) && (!(p->flags & FLAG_CLOCKEVENT)))
-		sh_cmt_set_next(p, p->max_match_value);
+		__sh_cmt_set_next(p, p->max_match_value);
  out:
 	spin_unlock_irqrestore(&p->lock, flags);
 
@@ -381,7 +390,7 @@ static void sh_cmt_stop(struct sh_cmt_priv *p, unsigned long flag)
 
 	/* adjust the timeout to maximum if only clocksource left */
 	if ((flag == FLAG_CLOCKEVENT) && (p->flags & FLAG_CLOCKSOURCE))
-		sh_cmt_set_next(p, p->max_match_value);
+		__sh_cmt_set_next(p, p->max_match_value);
 
 	spin_unlock_irqrestore(&p->lock, flags);
 }
@@ -403,7 +412,7 @@ static cycle_t sh_cmt_clocksource_read(struct clocksource *cs)
 	raw = sh_cmt_get_counter(p, &has_wrapped);
 
 	if (unlikely(has_wrapped))
-		raw += p->match_value;
+		raw += p->match_value + 1;
 	spin_unlock_irqrestore(&p->lock, flags);
 
 	return value + raw;
@@ -411,11 +420,15 @@ static cycle_t sh_cmt_clocksource_read(struct clocksource *cs)
 
 static int sh_cmt_clocksource_enable(struct clocksource *cs)
 {
+	int ret;
 	struct sh_cmt_priv *p = cs_to_sh_cmt(cs);
 
 	p->total_cycles = 0;
 
-	return sh_cmt_start(p, FLAG_CLOCKSOURCE);
+	ret = sh_cmt_start(p, FLAG_CLOCKSOURCE);
+	if (!ret)
+		__clocksource_updatefreq_hz(cs, p->rate);
+	return ret;
 }
 
 static void sh_cmt_clocksource_disable(struct clocksource *cs)
@@ -443,19 +456,10 @@ static int sh_cmt_register_clocksource(struct sh_cmt_priv *p,
 	cs->mask = CLOCKSOURCE_MASK(sizeof(unsigned long) * 8);
 	cs->flags = CLOCK_SOURCE_IS_CONTINUOUS;
 
-	/* clk_get_rate() needs an enabled clock */
-	clk_enable(p->clk);
-	p->rate = clk_get_rate(p->clk) / (p->width == 16) ? 512 : 8;
-	clk_disable(p->clk);
-
-	/* TODO: calculate good shift from rate and counter bit width */
-	cs->shift = 0;
-	cs->mult = clocksource_hz2mult(p->rate, cs->shift);
-
 	dev_info(&p->pdev->dev, "used as clock source\n");
 
-	clocksource_register(cs);
-
+	/* Register with dummy 1 Hz value, gets updated in ->enable() */
+	clocksource_register_hz(cs, 1);
 	return 0;
 }
 
@@ -478,7 +482,7 @@ static void sh_cmt_clock_event_start(struct sh_cmt_priv *p, int periodic)
 	ced->min_delta_ns = clockevent_delta2ns(0x1f, ced);
 
 	if (periodic)
-		sh_cmt_set_next(p, (p->rate + HZ/2) / HZ);
+		sh_cmt_set_next(p, ((p->rate + HZ/2) / HZ) - 1);
 	else
 		sh_cmt_set_next(p, p->max_match_value);
 }
@@ -523,9 +527,9 @@ static int sh_cmt_clock_event_next(unsigned long delta,
 
 	BUG_ON(ced->mode != CLOCK_EVT_MODE_ONESHOT);
 	if (likely(p->flags & FLAG_IRQCONTEXT))
-		p->next_match_value = delta;
+		p->next_match_value = delta - 1;
 	else
-		sh_cmt_set_next(p, delta);
+		sh_cmt_set_next(p, delta - 1);
 
 	return 0;
 }
@@ -616,13 +620,9 @@ static int sh_cmt_setup(struct sh_cmt_priv *p, struct platform_device *pdev)
 	/* get hold of clock */
 	p->clk = clk_get(&p->pdev->dev, "cmt_fck");
 	if (IS_ERR(p->clk)) {
-		dev_warn(&p->pdev->dev, "using deprecated clock lookup\n");
-		p->clk = clk_get(&p->pdev->dev, cfg->clk);
-		if (IS_ERR(p->clk)) {
-			dev_err(&p->pdev->dev, "cannot get clock\n");
-			ret = PTR_ERR(p->clk);
-			goto err1;
-		}
+		dev_err(&p->pdev->dev, "cannot get clock\n");
+		ret = PTR_ERR(p->clk);
+		goto err1;
 	}
 
 	if (resource_size(res) == 6) {
@@ -664,6 +664,7 @@ static int __devinit sh_cmt_probe(struct platform_device *pdev)
 
 	if (p) {
 		dev_info(&pdev->dev, "kept as earlytimer\n");
+		pm_runtime_enable(&pdev->dev);
 		return 0;
 	}
 
@@ -678,6 +679,9 @@ static int __devinit sh_cmt_probe(struct platform_device *pdev)
 		kfree(p);
 		platform_set_drvdata(pdev, NULL);
 	}
+
+	if (!is_early_platform_device(pdev))
+		pm_runtime_enable(&pdev->dev);
 	return ret;
 }
 

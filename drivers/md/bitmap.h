@@ -45,7 +45,7 @@
  *
  * The counter counts pending write requests, plus the on-disk bit.
  * When the counter is '1' and the resync bits are clear, the on-disk
- * bit can be cleared aswell, thus setting the counter to 0.
+ * bit can be cleared as well, thus setting the counter to 0.
  * When we set a bit, or in the counter (to start a write), if the fields is
  * 0, we first set the disk bit and set the counter to 1.
  *
@@ -222,6 +222,10 @@ struct bitmap {
 	unsigned long file_pages; /* number of pages in the file */
 	int last_page_size; /* bytes in the last page */
 
+	unsigned long logattrs; /* used when filemap_attr doesn't exist
+				 * because we are working with a dirty_log
+				 */
+
 	unsigned long flags;
 
 	int allclean;
@@ -243,12 +247,14 @@ struct bitmap {
 	wait_queue_head_t behind_wait;
 
 	struct sysfs_dirent *sysfs_can_clear;
+
 };
 
 /* the bitmap API */
 
 /* these are used only by md/bitmap */
 int  bitmap_create(mddev_t *mddev);
+int bitmap_load(mddev_t *mddev);
 void bitmap_flush(mddev_t *mddev);
 void bitmap_destroy(mddev_t *mddev);
 
@@ -265,8 +271,8 @@ int bitmap_startwrite(struct bitmap *bitmap, sector_t offset,
 			unsigned long sectors, int behind);
 void bitmap_endwrite(struct bitmap *bitmap, sector_t offset,
 			unsigned long sectors, int success, int behind);
-int bitmap_start_sync(struct bitmap *bitmap, sector_t offset, int *blocks, int degraded);
-void bitmap_end_sync(struct bitmap *bitmap, sector_t offset, int *blocks, int aborted);
+int bitmap_start_sync(struct bitmap *bitmap, sector_t offset, sector_t *blocks, int degraded);
+void bitmap_end_sync(struct bitmap *bitmap, sector_t offset, sector_t *blocks, int aborted);
 void bitmap_close_sync(struct bitmap *bitmap);
 void bitmap_cond_end_sync(struct bitmap *bitmap, sector_t sector);
 

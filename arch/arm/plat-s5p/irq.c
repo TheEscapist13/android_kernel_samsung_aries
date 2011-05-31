@@ -73,18 +73,19 @@ static struct s3c_uart_irq uart_irqs[] = {
 
 void __init s5p_init_irq(u32 *vic, u32 num_vic)
 {
+<<<<<<< HEAD
 	struct irq_chip *chip;
+=======
+#ifdef CONFIG_ARM_VIC
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	int irq;
 
 	/* initialize the VICs */
 	for (irq = 0; irq < num_vic; irq++)
 		vic_init(VA_VIC(irq), VIC_BASE(irq), vic[irq], 0);
+#endif
 
-	s3c_init_vic_timer_irq(IRQ_TIMER0_VIC, IRQ_TIMER0);
-	s3c_init_vic_timer_irq(IRQ_TIMER1_VIC, IRQ_TIMER1);
-	s3c_init_vic_timer_irq(IRQ_TIMER2_VIC, IRQ_TIMER2);
-	s3c_init_vic_timer_irq(IRQ_TIMER3_VIC, IRQ_TIMER3);
-	s3c_init_vic_timer_irq(IRQ_TIMER4_VIC, IRQ_TIMER4);
+	s3c_init_vic_timer_irq(5, IRQ_TIMER0);
 
 	s3c_init_uart_irqs(uart_irqs, ARRAY_SIZE(uart_irqs));
 

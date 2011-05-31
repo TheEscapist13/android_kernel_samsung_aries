@@ -197,12 +197,16 @@
 #define S3C64XX_UINTSP		0x34
 #define S3C64XX_UINTM		0x38
 
+<<<<<<< HEAD
 /* S5V210 interrupt registers. */
 #define S5P_UINTP		0x30
 #define S5P_UINTSP		0x34
 #define S5P_UINTM		0x38
 
 /* Following are specific to S5PV210 and S5P6442 */
+=======
+/* Following are specific to S5PV210 */
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 #define S5PV210_UCON_CLKMASK	(1<<10)
 #define S5PV210_UCON_PCLK	(0<<10)
 #define S5PV210_UCON_UCLK	(1<<10)
@@ -270,6 +274,8 @@ struct s3c2410_uartcfg {
 #else
         unsigned long	   uart_flags;      /* default uart flags */
 #endif
+
+	unsigned int	   has_fracval;
 
 	unsigned long	   ucon;	 /* value of ucon for port */
 	unsigned long	   ulcon;	 /* value of ulcon for port */

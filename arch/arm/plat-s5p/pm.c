@@ -19,6 +19,7 @@
 
 #define PFX "s5p pm: "
 
+<<<<<<< HEAD
 /* s3c_pm_check_resume_pin
  *
  * check to see if the pin is configured correctly for sleep mode, and
@@ -30,6 +31,8 @@ static void s3c_pm_check_resume_pin(unsigned int pin, unsigned int irqoffs)
 	/* nothing here yet */
 }
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 /* s3c_pm_configure_extint
  *
  * configure all external interrupt pins

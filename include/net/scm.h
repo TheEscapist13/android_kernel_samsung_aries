@@ -10,19 +10,24 @@
 /* Well, we should have at least one descriptor open
  * to accept passed FDs 8)
  */
-#define SCM_MAX_FD	255
+#define SCM_MAX_FD	253
 
 struct scm_fp_list {
 	struct list_head	list;
-	int			count;
+	short			count;
+	short			max;
 	struct file		*fp[SCM_MAX_FD];
 };
 
 struct scm_cookie {
 	struct pid		*pid;		/* Skb credentials */
 	const struct cred	*cred;
+<<<<<<< HEAD
 	struct ucred		creds;		/* Skb credentials	*/
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	struct scm_fp_list	*fp;		/* Passed files		*/
+	struct ucred		creds;		/* Skb credentials	*/
 #ifdef CONFIG_SECURITY_NETWORK
 	u32			secid;		/* Passed security ID 	*/
 #endif

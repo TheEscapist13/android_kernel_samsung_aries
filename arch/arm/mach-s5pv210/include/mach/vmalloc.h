@@ -17,6 +17,10 @@
 #ifndef __ASM_ARCH_VMALLOC_H
 #define __ASM_ARCH_VMALLOC_H __FILE__
 
+<<<<<<< HEAD
 #define VMALLOC_END	  (0xFC000000)
+=======
+#define VMALLOC_END	0xF6000000UL
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 #endif /* __ASM_ARCH_VMALLOC_H */

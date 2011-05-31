@@ -31,9 +31,13 @@
 /* clock sources for the mmc bus clock, order as for the ctrl2[5..4] */
 char *s5pv210_hsmmc_clksrcs[4] = {
 	[0] = "hsmmc",		/* HCLK */
-	[1] = "hsmmc",		/* HCLK */
+	/* [1] = "hsmmc",	- duplicate HCLK entry */
 	[2] = "sclk_mmc",	/* mmc_bus */
+<<<<<<< HEAD
 	[3] = NULL,		/*reserved */
+=======
+	/* [3] = NULL,		- reserved */
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 };
 
 void s5pv210_setup_sdhci0_cfg_gpio(struct platform_device *dev, int width)
@@ -167,8 +171,16 @@ void s5pv210_setup_sdhci_cfg_card(struct platform_device *dev,
 				    struct mmc_ios *ios,
 				    struct mmc_card *card)
 {
+<<<<<<< HEAD
 	u32 ctrl2;
 	u32 ctrl3;
+=======
+	u32 ctrl2, ctrl3;
+
+	/* don't need to alter anything according to card-type */
+
+	writel(S3C64XX_SDHCI_CONTROL4_DRIVE_9mA, r + S3C64XX_SDHCI_CONTROL4);
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 	ctrl2 = readl(r + S3C_SDHCI_CONTROL2);
 	ctrl2 &= S3C_SDHCI_CTRL2_SELBASECLK_MASK;

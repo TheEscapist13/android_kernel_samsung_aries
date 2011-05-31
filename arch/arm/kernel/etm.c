@@ -37,6 +37,7 @@ MODULE_AUTHOR("Alexander Shishkin");
 struct tracectx {
 	unsigned int	etb_bufsz;
 	void __iomem	*etb_regs;
+<<<<<<< HEAD
 	void __iomem	**etm_regs;
 	int		etm_regs_count;
 	unsigned long	flags;
@@ -48,15 +49,25 @@ struct tracectx {
 	unsigned long	data_range_start;
 	unsigned long	data_range_end;
 	bool		dump_initial_etb;
+=======
+	void __iomem	*etm_regs;
+	unsigned long	flags;
+	int		ncmppairs;
+	int		etm_portsz;
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	struct device	*dev;
 	struct clk	*emu_clk;
 	struct mutex	mutex;
 };
 
+<<<<<<< HEAD
 static struct tracectx tracer = {
 	.range_start = (unsigned long)_stext,
 	.range_end = (unsigned long)_etext,
 };
+=======
+static struct tracectx tracer;
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 static inline bool trace_isrunning(struct tracectx *t)
 {
@@ -299,7 +310,7 @@ static void etm_dump(void)
 	etb_lock(t);
 }
 
-static void sysrq_etm_dump(int key, struct tty_struct *tty)
+static void sysrq_etm_dump(int key)
 {
 	if (!mutex_trylock(&tracer.mutex)) {
 		printk(KERN_INFO "Tracing hardware busy\n");
@@ -400,6 +411,7 @@ static const struct file_operations etb_fops = {
 	.read = etb_read,
 	.open = etb_open,
 	.release = etb_release,
+	.llseek = no_llseek,
 };
 
 static struct miscdevice etb_miscdev = {
@@ -408,7 +420,7 @@ static struct miscdevice etb_miscdev = {
 	.fops = &etb_fops,
 };
 
-static int __init etb_probe(struct amba_device *dev, struct amba_id *id)
+static int __devinit etb_probe(struct amba_device *dev, const struct amba_id *id)
 {
 	struct tracectx *t = &tracer;
 	int ret = 0;
@@ -625,6 +637,7 @@ static ssize_t trace_mode_store(struct kobject *kobj,
 static struct kobj_attribute trace_mode_attr =
 	__ATTR(trace_mode, 0644, trace_mode_show, trace_mode_store);
 
+<<<<<<< HEAD
 static ssize_t trace_range_show(struct kobject *kobj,
 				  struct kobj_attribute *attr,
 				  char *buf)
@@ -697,6 +710,9 @@ static struct kobj_attribute trace_data_range_attr =
 		trace_data_range_show, trace_data_range_store);
 
 static int __init etm_probe(struct amba_device *dev, struct amba_id *id)
+=======
+static int __devinit etm_probe(struct amba_device *dev, const struct amba_id *id)
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 {
 	struct tracectx *t = &tracer;
 	int ret = 0;
@@ -731,10 +747,17 @@ static int __init etm_probe(struct amba_device *dev, struct amba_id *id)
 	t->flags = TRACER_CYCLE_ACC | TRACER_TRACE_DATA;
 	t->etm_portsz = 1;
 
+<<<<<<< HEAD
 	etm_unlock(t, t->etm_regs_count);
 	(void)etm_readl(t, t->etm_regs_count, ETMMR_PDSR);
 	/* dummy first read */
 	(void)etm_readl(&tracer, t->etm_regs_count, ETMMR_OSSRR);
+=======
+	etm_unlock(t);
+	(void)etm_readl(t, ETMMR_PDSR);
+	/* dummy first read */
+	(void)etm_readl(&tracer, ETMMR_OSSRR);
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 	t->ncmppairs = etm_readl(t, t->etm_regs_count, ETMR_CONFCODE) & 0xf;
 	etm_writel(t, t->etm_regs_count, 0x441, ETMR_CTRL);

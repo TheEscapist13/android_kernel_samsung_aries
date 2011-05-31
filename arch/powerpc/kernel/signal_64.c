@@ -178,7 +178,7 @@ static long restore_sigcontext(struct pt_regs *regs, sigset_t *set, int sig,
 	err |= __get_user(regs->xer, &sc->gp_regs[PT_XER]);
 	err |= __get_user(regs->ccr, &sc->gp_regs[PT_CCR]);
 	/* skip SOFTE */
-	err |= __get_user(regs->trap, &sc->gp_regs[PT_TRAP]);
+	regs->trap = 0;
 	err |= __get_user(regs->dar, &sc->gp_regs[PT_DAR]);
 	err |= __get_user(regs->dsisr, &sc->gp_regs[PT_DSISR]);
 	err |= __get_user(regs->result, &sc->gp_regs[PT_RESULT]);
@@ -381,7 +381,7 @@ badframe:
 	       regs, uc, &uc->uc_mcontext);
 #endif
 	if (show_unhandled_signals && printk_ratelimit())
-		printk(regs->msr & MSR_SF ? fmt64 : fmt32,
+		printk(regs->msr & MSR_64BIT ? fmt64 : fmt32,
 			current->comm, current->pid, "rt_sigreturn",
 			(long)uc, regs->nip, regs->link);
 
@@ -469,7 +469,7 @@ badframe:
 	       regs, frame, newsp);
 #endif
 	if (show_unhandled_signals && printk_ratelimit())
-		printk(regs->msr & MSR_SF ? fmt64 : fmt32,
+		printk(regs->msr & MSR_64BIT ? fmt64 : fmt32,
 			current->comm, current->pid, "setup_rt_frame",
 			(long)frame, regs->nip, regs->link);
 

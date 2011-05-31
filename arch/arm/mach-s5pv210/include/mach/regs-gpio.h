@@ -254,6 +254,7 @@
 
 #define eint_irq_to_bit(irq)		(1 << (EINT_OFFSET(irq) & 0x7))
 
+<<<<<<< HEAD
 #define eint_conf_reg(irq)		((eint_offset(irq)) >> 3)
 #define eint_filt_reg(irq)		((eint_offset(irq)) >> 2)
 #define eint_mask_reg(irq)		((eint_offset(irq)) >> 3)
@@ -266,6 +267,8 @@
 #define S5P_EXTINT_RISEEDGE		(0x03)
 #define S5P_EXTINT_BOTHEDGE		(0x04)
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 #define EINT_MODE		S3C_GPIO_SFN(0xf)
 
 #define EINT_GPIO_0(x)		S5PV210_GPH0(x)

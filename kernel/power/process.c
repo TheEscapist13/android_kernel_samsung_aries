@@ -15,14 +15,18 @@
 #include <linux/syscalls.h>
 #include <linux/freezer.h>
 #include <linux/delay.h>
+<<<<<<< HEAD
 #include <linux/wakelock.h>
+=======
+#include <linux/workqueue.h>
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 /* 
  * Timeout for stopping processes
  */
 #define TIMEOUT	(20 * HZ)
 
-static inline int freezeable(struct task_struct * p)
+static inline int freezable(struct task_struct * p)
 {
 	if ((p == current) ||
 	    (p->flags & PF_NOFREEZE) ||
@@ -36,19 +40,28 @@ static int try_to_freeze_tasks(bool sig_only)
 	struct task_struct *g, *p;
 	unsigned long end_time;
 	unsigned int todo;
+	bool wq_busy = false;
 	struct timeval start, end;
 	u64 elapsed_csecs64;
 	unsigned int elapsed_csecs;
+<<<<<<< HEAD
 	unsigned int wakeup = 0;
+=======
+	bool wakeup = false;
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 	do_gettimeofday(&start);
 
 	end_time = jiffies + TIMEOUT;
+
+	if (!sig_only)
+		freeze_workqueues_begin();
+
 	while (true) {
 		todo = 0;
 		read_lock(&tasklist_lock);
 		do_each_thread(g, p) {
-			if (frozen(p) || !freezeable(p))
+			if (frozen(p) || !freezable(p))
 				continue;
 
 			if (!freeze_task(p, sig_only))
@@ -59,18 +72,38 @@ static int try_to_freeze_tasks(bool sig_only)
 			 * perturb a task in TASK_STOPPED or TASK_TRACED.
 			 * It is "frozen enough".  If the task does wake
 			 * up, it will immediately call try_to_freeze.
+			 *
+			 * Because freeze_task() goes through p's
+			 * scheduler lock after setting TIF_FREEZE, it's
+			 * guaranteed that either we see TASK_RUNNING or
+			 * try_to_stop() after schedule() in ptrace/signal
+			 * stop sees TIF_FREEZE.
 			 */
 			if (!task_is_stopped_or_traced(p) &&
 			    !freezer_should_skip(p))
 				todo++;
 		} while_each_thread(g, p);
 		read_unlock(&tasklist_lock);
+<<<<<<< HEAD
 		if (todo && has_wake_lock(WAKE_LOCK_SUSPEND)) {
 			wakeup = 1;
 			break;
 		}
+=======
+
+		if (!sig_only) {
+			wq_busy = freeze_workqueues_busy();
+			todo += wq_busy;
+		}
+
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 		if (!todo || time_after(jiffies, end_time))
 			break;
+
+		if (pm_wakeup_pending()) {
+			wakeup = true;
+			break;
+		}
 
 		/*
 		 * We need to retry, but first give the freezing tasks some
@@ -90,6 +123,7 @@ static int try_to_freeze_tasks(bool sig_only)
 		 * and caller must call thaw_processes() if something fails),
 		 * but it cleans up leftover PF_FREEZE requests.
 		 */
+<<<<<<< HEAD
 		if(wakeup) {
 			printk("\n");
 			printk(KERN_ERR "Freezing of %s aborted\n",
@@ -106,6 +140,21 @@ static int try_to_freeze_tasks(bool sig_only)
 			task_lock(p);
 			if (freezing(p) && !freezer_should_skip(p) &&
 				elapsed_csecs > 100)
+=======
+		printk("\n");
+		printk(KERN_ERR "Freezing of tasks %s after %d.%02d seconds "
+		       "(%d tasks refusing to freeze, wq_busy=%d):\n",
+		       wakeup ? "aborted" : "failed",
+		       elapsed_csecs / 100, elapsed_csecs % 100,
+		       todo - wq_busy, wq_busy);
+
+		thaw_workqueues();
+
+		read_lock(&tasklist_lock);
+		do_each_thread(g, p) {
+			task_lock(p);
+			if (!wakeup && freezing(p) && !freezer_should_skip(p))
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 				sched_show_task(p);
 			cancel_freezing(p);
 			task_unlock(p);
@@ -152,7 +201,7 @@ static void thaw_tasks(bool nosig_only)
 
 	read_lock(&tasklist_lock);
 	do_each_thread(g, p) {
-		if (!freezeable(p))
+		if (!freezable(p))
 			continue;
 
 		if (nosig_only && should_send_signal(p))
@@ -171,6 +220,7 @@ void thaw_processes(void)
 	oom_killer_enable();
 
 	printk("Restarting tasks ... ");
+	thaw_workqueues();
 	thaw_tasks(true);
 	thaw_tasks(false);
 	schedule();

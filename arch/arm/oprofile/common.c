@@ -10,8 +10,6 @@
  */
 
 #include <linux/cpumask.h>
-#include <linux/err.h>
-#include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/mutex.h>
 #include <linux/oprofile.h>
@@ -25,32 +23,9 @@
 #include <asm/ptrace.h>
 
 #ifdef CONFIG_HW_PERF_EVENTS
-/*
- * Per performance monitor configuration as set via oprofilefs.
- */
-struct op_counter_config {
-	unsigned long count;
-	unsigned long enabled;
-	unsigned long event;
-	unsigned long unit_mask;
-	unsigned long kernel;
-	unsigned long user;
-	struct perf_event_attr attr;
-};
-
-static int op_arm_enabled;
-static DEFINE_MUTEX(op_arm_mutex);
-
-static struct op_counter_config *counter_config;
-static struct perf_event **perf_events[nr_cpumask_bits];
-static int perf_num_counters;
-
-/*
- * Overflow callback for oprofile.
- */
-static void op_overflow_handler(struct perf_event *event, int unused,
-			struct perf_sample_data *data, struct pt_regs *regs)
+char *op_name_from_perf_id(void)
 {
+<<<<<<< HEAD
 	int id;
 	u32 cpu = smp_processor_id();
 
@@ -112,52 +87,10 @@ static int op_create_counter(int cpu, int event)
 
 	return ret;
 }
+=======
+	enum arm_perf_pmu_ids id = armpmu_get_pmu_id();
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
-static void op_destroy_counter(int cpu, int event)
-{
-	struct perf_event *pevent = perf_events[cpu][event];
-
-	if (pevent) {
-		perf_event_release_kernel(pevent);
-		perf_events[cpu][event] = NULL;
-	}
-}
-
-/*
- * Called by op_arm_start to create active perf events based on the
- * perviously configured attributes.
- */
-static int op_perf_start(void)
-{
-	int cpu, event, ret = 0;
-
-	for_each_online_cpu(cpu) {
-		for (event = 0; event < perf_num_counters; ++event) {
-			ret = op_create_counter(cpu, event);
-			if (ret)
-				goto out;
-		}
-	}
-
-out:
-	return ret;
-}
-
-/*
- * Called by op_arm_stop at the end of a profiling run.
- */
-static void op_perf_stop(void)
-{
-	int cpu, event;
-
-	for_each_online_cpu(cpu)
-		for (event = 0; event < perf_num_counters; ++event)
-			op_destroy_counter(cpu, event);
-}
-
-
-static char *op_name_from_perf_id(enum arm_perf_pmu_ids id)
-{
 	switch (id) {
 	case ARM_PERF_PMU_ID_XSCALE1:
 		return "arm/xscale1";
@@ -175,116 +108,7 @@ static char *op_name_from_perf_id(enum arm_perf_pmu_ids id)
 		return NULL;
 	}
 }
-
-static int op_arm_create_files(struct super_block *sb, struct dentry *root)
-{
-	unsigned int i;
-
-	for (i = 0; i < perf_num_counters; i++) {
-		struct dentry *dir;
-		char buf[4];
-
-		snprintf(buf, sizeof buf, "%d", i);
-		dir = oprofilefs_mkdir(sb, root, buf);
-		oprofilefs_create_ulong(sb, dir, "enabled", &counter_config[i].enabled);
-		oprofilefs_create_ulong(sb, dir, "event", &counter_config[i].event);
-		oprofilefs_create_ulong(sb, dir, "count", &counter_config[i].count);
-		oprofilefs_create_ulong(sb, dir, "unit_mask", &counter_config[i].unit_mask);
-		oprofilefs_create_ulong(sb, dir, "kernel", &counter_config[i].kernel);
-		oprofilefs_create_ulong(sb, dir, "user", &counter_config[i].user);
-	}
-
-	return 0;
-}
-
-static int op_arm_setup(void)
-{
-	spin_lock(&oprofilefs_lock);
-	op_perf_setup();
-	spin_unlock(&oprofilefs_lock);
-	return 0;
-}
-
-static int op_arm_start(void)
-{
-	int ret = -EBUSY;
-
-	mutex_lock(&op_arm_mutex);
-	if (!op_arm_enabled) {
-		ret = 0;
-		op_perf_start();
-		op_arm_enabled = 1;
-	}
-	mutex_unlock(&op_arm_mutex);
-	return ret;
-}
-
-static void op_arm_stop(void)
-{
-	mutex_lock(&op_arm_mutex);
-	if (op_arm_enabled)
-		op_perf_stop();
-	op_arm_enabled = 0;
-	mutex_unlock(&op_arm_mutex);
-}
-
-#ifdef CONFIG_PM
-static int op_arm_suspend(struct platform_device *dev, pm_message_t state)
-{
-	mutex_lock(&op_arm_mutex);
-	if (op_arm_enabled)
-		op_perf_stop();
-	mutex_unlock(&op_arm_mutex);
-	return 0;
-}
-
-static int op_arm_resume(struct platform_device *dev)
-{
-	mutex_lock(&op_arm_mutex);
-	if (op_arm_enabled && op_perf_start())
-		op_arm_enabled = 0;
-	mutex_unlock(&op_arm_mutex);
-	return 0;
-}
-
-static struct platform_driver oprofile_driver = {
-	.driver		= {
-		.name		= "arm-oprofile",
-	},
-	.resume		= op_arm_resume,
-	.suspend	= op_arm_suspend,
-};
-
-static struct platform_device *oprofile_pdev;
-
-static int __init init_driverfs(void)
-{
-	int ret;
-
-	ret = platform_driver_register(&oprofile_driver);
-	if (ret)
-		goto out;
-
-	oprofile_pdev =	platform_device_register_simple(
-				oprofile_driver.driver.name, 0, NULL, 0);
-	if (IS_ERR(oprofile_pdev)) {
-		ret = PTR_ERR(oprofile_pdev);
-		platform_driver_unregister(&oprofile_driver);
-	}
-
-out:
-	return ret;
-}
-
-static void  exit_driverfs(void)
-{
-	platform_device_unregister(oprofile_pdev);
-	platform_driver_unregister(&oprofile_driver);
-}
-#else
-static int __init init_driverfs(void) { return 0; }
-#define exit_driverfs() do { } while (0)
-#endif /* CONFIG_PM */
+#endif
 
 static int report_trace(struct stackframe *frame, void *d)
 {
@@ -324,7 +148,7 @@ static struct frame_tail* user_backtrace(struct frame_tail *tail)
 
 	/* frame pointers should strictly progress back up the stack
 	 * (towards higher addresses) */
-	if (tail >= buftail[0].fp)
+	if (tail + 1 >= buftail[0].fp)
 		return NULL;
 
 	return buftail[0].fp-1;
@@ -350,6 +174,7 @@ static void arm_backtrace(struct pt_regs * const regs, unsigned int depth)
 
 int __init oprofile_arch_init(struct oprofile_operations *ops)
 {
+<<<<<<< HEAD
 	int cpu, ret = 0;
 
 	perf_num_counters = armpmu_get_max_events();
@@ -382,22 +207,15 @@ int __init oprofile_arch_init(struct oprofile_operations *ops)
 		}
 	}
 
+=======
+	/* provide backtrace support also in timer mode: */
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	ops->backtrace		= arm_backtrace;
-	ops->create_files	= op_arm_create_files;
-	ops->setup		= op_arm_setup;
-	ops->start		= op_arm_start;
-	ops->stop		= op_arm_stop;
-	ops->shutdown		= op_arm_stop;
-	ops->cpu_type		= op_name_from_perf_id(armpmu_get_pmu_id());
 
-	if (!ops->cpu_type)
-		ret = -ENODEV;
-	else
-		pr_info("oprofile: using %s\n", ops->cpu_type);
-
-	return ret;
+	return oprofile_perf_init(ops);
 }
 
+<<<<<<< HEAD
 void oprofile_arch_exit(void)
 {
 	int cpu, id;
@@ -421,9 +239,9 @@ void oprofile_arch_exit(void)
 }
 #else
 int __init oprofile_arch_init(struct oprofile_operations *ops)
+=======
+void __exit oprofile_arch_exit(void)
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 {
-	pr_info("oprofile: hardware counters not available\n");
-	return -ENODEV;
+	oprofile_perf_exit();
 }
-void oprofile_arch_exit(void) {}
-#endif /* CONFIG_HW_PERF_EVENTS */

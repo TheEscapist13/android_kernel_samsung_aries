@@ -13,6 +13,7 @@
 #ifndef __ASM_ARCH_SYSTEM_H
 #define __ASM_ARCH_SYSTEM_H __FILE__
 
+<<<<<<< HEAD
 #include <asm/proc-fns.h>
 #include <plat/watchdog-reset.h>
 
@@ -20,8 +21,11 @@ static void arch_idle(void)
 {
 	/* nothing here yet */
 }
+=======
+#include <plat/system-reset.h>
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
-static void arch_reset(char mode, const char *cmd)
+static void arch_idle(void)
 {
 	if (mode != 's')
 		arch_wdt_reset();

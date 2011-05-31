@@ -13,6 +13,8 @@
 #include <linux/errno.h>
 
 struct device;
+struct gpio;
+struct gpio_chip;
 
 /*
  * Some platforms don't support the GPIO programming interface.
@@ -23,9 +25,9 @@ struct device;
  * warning when something is wrongly called.
  */
 
-static inline int gpio_is_valid(int number)
+static inline bool gpio_is_valid(int number)
 {
-	return 0;
+	return false;
 }
 
 static inline int gpio_request(unsigned gpio, const char *label)
@@ -33,7 +35,26 @@ static inline int gpio_request(unsigned gpio, const char *label)
 	return -ENOSYS;
 }
 
+static inline int gpio_request_one(unsigned gpio,
+					unsigned long flags, const char *label)
+{
+	return -ENOSYS;
+}
+
+static inline int gpio_request_array(const struct gpio *array, size_t num)
+{
+	return -ENOSYS;
+}
+
 static inline void gpio_free(unsigned gpio)
+{
+	might_sleep();
+
+	/* GPIO can never have been requested */
+	WARN_ON(1);
+}
+
+static inline void gpio_free_array(const struct gpio *array, size_t num)
 {
 	might_sleep();
 

@@ -1,8 +1,8 @@
 /*
- *  linux/drivers/mmc/tmio_mmc.c
+ * linux/drivers/mmc/host/tmio_mmc.c
  *
- *  Copyright (C) 2004 Ian Molton
- *  Copyright (C) 2007 Ian Molton
+ * Copyright (C) 2007 Ian Molton
+ * Copyright (C) 2004 Ian Molton
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -11,31 +11,19 @@
  * Driver for the MMC / SD / SDIO cell found in:
  *
  * TC6393XB TC6391XB TC6387XB T7L66XB ASIC3
- *
- * This driver draws mainly on scattered spec sheets, Reverse engineering
- * of the toshiba e800  SD driver and some parts of the 2.4 ASIC3 driver (4 bit
- * support). (Further 4 bit support from a later datasheet).
- *
- * TODO:
- *   Investigate using a workqueue for PIO transfers
- *   Eliminate FIXMEs
- *   SDIO support
- *   Better Power management
- *   Handle MMC errors better
- *   double buffer support
- *
  */
-#include <linux/module.h>
-#include <linux/irq.h>
+
 #include <linux/device.h>
-#include <linux/delay.h>
-#include <linux/dmaengine.h>
-#include <linux/mmc/host.h>
 #include <linux/mfd/core.h>
 #include <linux/mfd/tmio.h>
+#include <linux/mmc/host.h>
+#include <linux/module.h>
+#include <linux/pagemap.h>
+#include <linux/scatterlist.h>
 
 #include "tmio_mmc.h"
 
+<<<<<<< HEAD
 static void tmio_mmc_set_clock(struct tmio_mmc_host *host, int new_clock)
 {
 	u32 clk = 0, clock;
@@ -762,14 +750,16 @@ static const struct mmc_host_ops tmio_mmc_ops = {
 	.get_ro         = tmio_mmc_get_ro,
 };
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 #ifdef CONFIG_PM
 static int tmio_mmc_suspend(struct platform_device *dev, pm_message_t state)
 {
-	struct mfd_cell	*cell = (struct mfd_cell *)dev->dev.platform_data;
+	const struct mfd_cell *cell = mfd_get_cell(dev);
 	struct mmc_host *mmc = platform_get_drvdata(dev);
 	int ret;
 
-	ret = mmc_suspend_host(mmc);
+	ret = tmio_mmc_host_suspend(&dev->dev);
 
 	/* Tell MFD core it can disable us now.*/
 	if (!ret && cell->disable)
@@ -780,20 +770,17 @@ static int tmio_mmc_suspend(struct platform_device *dev, pm_message_t state)
 
 static int tmio_mmc_resume(struct platform_device *dev)
 {
-	struct mfd_cell	*cell = (struct mfd_cell *)dev->dev.platform_data;
+	const struct mfd_cell *cell = mfd_get_cell(dev);
 	struct mmc_host *mmc = platform_get_drvdata(dev);
 	int ret = 0;
 
 	/* Tell the MFD core we are ready to be enabled */
-	if (cell->resume) {
+	if (cell->resume)
 		ret = cell->resume(dev);
-		if (ret)
-			goto out;
-	}
 
-	mmc_resume_host(mmc);
+	if (!ret)
+		ret = tmio_mmc_host_resume(&dev->dev);
 
-out:
 	return ret;
 }
 #else
@@ -801,125 +788,69 @@ out:
 #define tmio_mmc_resume NULL
 #endif
 
-static int __devinit tmio_mmc_probe(struct platform_device *dev)
+static int __devinit tmio_mmc_probe(struct platform_device *pdev)
 {
-	struct mfd_cell	*cell = (struct mfd_cell *)dev->dev.platform_data;
+	const struct mfd_cell *cell = mfd_get_cell(pdev);
 	struct tmio_mmc_data *pdata;
-	struct resource *res_ctl;
 	struct tmio_mmc_host *host;
-	struct mmc_host *mmc;
-	int ret = -EINVAL;
-	u32 irq_mask = TMIO_MASK_CMD;
+	int ret = -EINVAL, irq;
 
-	if (dev->num_resources != 2)
+	if (pdev->num_resources != 2)
 		goto out;
 
-	res_ctl = platform_get_resource(dev, IORESOURCE_MEM, 0);
-	if (!res_ctl)
-		goto out;
-
-	pdata = cell->driver_data;
+	pdata = pdev->dev.platform_data;
 	if (!pdata || !pdata->hclk)
 		goto out;
 
-	ret = -ENOMEM;
-
-	mmc = mmc_alloc_host(sizeof(struct tmio_mmc_host), &dev->dev);
-	if (!mmc)
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		ret = irq;
 		goto out;
-
-	host = mmc_priv(mmc);
-	host->mmc = mmc;
-	host->pdev = dev;
-	platform_set_drvdata(dev, mmc);
-
-	host->set_pwr = pdata->set_pwr;
-	host->set_clk_div = pdata->set_clk_div;
-
-	/* SD control register space size is 0x200, 0x400 for bus_shift=1 */
-	host->bus_shift = resource_size(res_ctl) >> 10;
-
-	host->ctl = ioremap(res_ctl->start, resource_size(res_ctl));
-	if (!host->ctl)
-		goto host_free;
-
-	mmc->ops = &tmio_mmc_ops;
-	mmc->caps = MMC_CAP_4_BIT_DATA;
-	mmc->caps |= pdata->capabilities;
-	mmc->f_max = pdata->hclk;
-	mmc->f_min = mmc->f_max / 512;
-	if (pdata->ocr_mask)
-		mmc->ocr_avail = pdata->ocr_mask;
-	else
-		mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
+	}
 
 	/* Tell the MFD core we are ready to be enabled */
 	if (cell->enable) {
-		ret = cell->enable(dev);
+		ret = cell->enable(pdev);
 		if (ret)
-			goto unmap_ctl;
+			goto out;
 	}
 
-	tmio_mmc_clk_stop(host);
-	reset(host);
-
-	ret = platform_get_irq(dev, 0);
-	if (ret >= 0)
-		host->irq = ret;
-	else
-		goto cell_disable;
-
-	disable_mmc_irqs(host, TMIO_MASK_ALL);
-
-	ret = request_irq(host->irq, tmio_mmc_irq, IRQF_DISABLED |
-		IRQF_TRIGGER_FALLING, dev_name(&dev->dev), host);
+	ret = tmio_mmc_host_probe(&host, pdev, pdata);
 	if (ret)
 		goto cell_disable;
 
-	/* See if we also get DMA */
-	tmio_mmc_request_dma(host, pdata);
-
-	mmc_add_host(mmc);
+	ret = request_irq(irq, tmio_mmc_irq, IRQF_DISABLED |
+			  IRQF_TRIGGER_FALLING, dev_name(&pdev->dev), host);
+	if (ret)
+		goto host_remove;
 
 	pr_info("%s at 0x%08lx irq %d\n", mmc_hostname(host->mmc),
-		(unsigned long)host->ctl, host->irq);
-
-	/* Unmask the IRQs we want to know about */
-	if (!host->chan_rx)
-		irq_mask |= TMIO_MASK_READOP;
-	if (!host->chan_tx)
-		irq_mask |= TMIO_MASK_WRITEOP;
-	enable_mmc_irqs(host, irq_mask);
+		(unsigned long)host->ctl, irq);
 
 	return 0;
 
+host_remove:
+	tmio_mmc_host_remove(host);
 cell_disable:
 	if (cell->disable)
-		cell->disable(dev);
-unmap_ctl:
-	iounmap(host->ctl);
-host_free:
-	mmc_free_host(mmc);
+		cell->disable(pdev);
 out:
 	return ret;
 }
 
-static int __devexit tmio_mmc_remove(struct platform_device *dev)
+static int __devexit tmio_mmc_remove(struct platform_device *pdev)
 {
-	struct mfd_cell	*cell = (struct mfd_cell *)dev->dev.platform_data;
-	struct mmc_host *mmc = platform_get_drvdata(dev);
+	const struct mfd_cell *cell = mfd_get_cell(pdev);
+	struct mmc_host *mmc = platform_get_drvdata(pdev);
 
-	platform_set_drvdata(dev, NULL);
+	platform_set_drvdata(pdev, NULL);
 
 	if (mmc) {
 		struct tmio_mmc_host *host = mmc_priv(mmc);
-		mmc_remove_host(mmc);
-		tmio_mmc_release_dma(host);
-		free_irq(host->irq, host);
+		free_irq(platform_get_irq(pdev, 0), host);
+		tmio_mmc_host_remove(host);
 		if (cell->disable)
-			cell->disable(dev);
-		iounmap(host->ctl);
-		mmc_free_host(mmc);
+			cell->disable(pdev);
 	}
 
 	return 0;

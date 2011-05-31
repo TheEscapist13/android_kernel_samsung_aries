@@ -35,12 +35,17 @@
 	/* s3c_cpu_save
 	 *
 	 * entry:
+<<<<<<< HEAD
 	 *	r0 = save address (virtual addr of s3c_sleep_save_phys)
+=======
+	 *	r1 = v:p offset
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	*/
 
 ENTRY(s3c_cpu_save)
 
 	stmfd	sp!, { r3 - r12, lr }
+<<<<<<< HEAD
 
 	mrc	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mrc	p15, 0, r5, c3, c0, 0	@ Domain ID
@@ -56,12 +61,17 @@ ENTRY(s3c_cpu_save)
 	stmia	r0, { r3 - r13 }
 
 	bl	s3c_pm_cb_flushcache
+=======
+	ldr	r3, =resume_with_mmu
+	bl	cpu_suspend
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 	ldr	r0, =pm_cpu_sleep
 	ldr	r0, [ r0 ]
 	mov	pc, r0
 
 resume_with_mmu:
+<<<<<<< HEAD
 	/*
 	 * After MMU is turned on, restore the previous MMU table.
 	 */
@@ -73,16 +83,21 @@ resume_with_mmu:
 	mov	r0, #0
 	mcr	p15, 0, r0, c8, c7, 0		@ Invalidate I & D TLB
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	ldmfd	sp!, { r3 - r12, pc }
 
 	.ltorg
 
+<<<<<<< HEAD
 	.data
 
 	.global	s3c_sleep_save_phys
 s3c_sleep_save_phys:
 	.word	0
 
+=======
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	/* sleep magic, to allow the bootloader to check for an valid
 	 * image to resume to. Must be the first word before the
 	 * s3c_cpu_resume entry.
@@ -100,6 +115,7 @@ s3c_sleep_save_phys:
 	*/
 
 ENTRY(s3c_cpu_resume)
+<<<<<<< HEAD
 	mov	r0, #PSR_I_BIT | PSR_F_BIT | SVC_MODE
 	msr	cpsr_c, r0
 
@@ -172,3 +188,6 @@ ENTRY(s3c_cpu_resume)
 	mov	pc, r2				@ go back to virtual address
 
 	.ltorg
+=======
+	b	cpu_resume
+>>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
