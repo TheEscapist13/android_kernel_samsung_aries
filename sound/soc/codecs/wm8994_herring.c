@@ -1787,9 +1787,6 @@ void wm8994_set_playback_speaker(struct snd_soc_codec *codec)
 	val |= WM8994_AIF1DAC1L_TO_DAC1L;
 	wm8994_write(codec, WM8994_DAC1_LEFT_MIXER_ROUTING, val);
 
-#ifdef CONFIG_SND_WM8994_EXTENSIONS
-	wm8994_extensions_playback_speaker();
-#endif
 
 	/* Enbale bias,vmid and Left speaker */
 	val = wm8994_read(codec, WM8994_POWER_MANAGEMENT_1);
