@@ -44,6 +44,7 @@
 #include "wm8994_voodoo.h"
 #endif
 
+
 #define WM8994_VERSION "0.1"
 #define SUBJECT "wm8994_samsung.c"
 
@@ -3254,7 +3255,7 @@ static int wm8994_i2c_probe(struct i2c_client *i2c,
 	control_data1 = i2c;
 
 	ret = wm8994_init(wm8994_priv, pdata);
-//voodoo sound
+
 #ifdef CONFIG_SND_VOODOO
 	voodoo_hook_wm8994_pcm_probe(codec);
 #endif

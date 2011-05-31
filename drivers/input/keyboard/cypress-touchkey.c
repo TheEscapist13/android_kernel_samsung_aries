@@ -192,6 +192,7 @@ static irqreturn_t touchkey_interrupt_thread(int irq, void *touchkey_devdata)
 	}
 
 	input_sync(devdata->input_dev);
+
 err:
 	dev_err(&devdata->client->dev, "%s: touchkey_interrupt_thread\n", __func__);
 	return IRQ_HANDLED;
@@ -260,6 +261,7 @@ static void cypress_touchkey_early_resume(struct early_suspend *h)
 	devdata->is_dead = false;
 	enable_irq(devdata->client->irq);
 	devdata->is_powering_on = false;
+
 }
 #endif
 
@@ -373,6 +375,7 @@ static int cypress_touchkey_probe(struct i2c_client *client,
 #ifdef CONFIG_BACKLIGHT_NOTIFICATION
 	blndevdata = devdata;
 #endif
+
 
 
 	return 0;
