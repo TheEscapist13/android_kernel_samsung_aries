@@ -296,10 +296,7 @@ Conexant 5066
 =============
   laptop	Basic Laptop config (default)
   hp-laptop	HP laptops, e g G60
-<<<<<<< HEAD
-=======
   asus		Asus K52JU, Lenovo G560
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
   dell-laptop	Dell laptops
   dell-vostro	Dell Vostro
   olpc-xo-1_5	OLPC XO 1.5

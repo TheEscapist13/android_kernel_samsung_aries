@@ -294,11 +294,8 @@ config ARCH_AT91
 	bool "Atmel AT91"
 	select ARCH_REQUIRE_GPIOLIB
 	select HAVE_CLK
-<<<<<<< HEAD
-=======
 	select CLKDEV_LOOKUP
 	select ARM_PATCH_PHYS_VIRT if MMU
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	help
 	  This enables support for systems based on the Atmel AT91RM9200,
 	  AT91SAM9 and AT91CAP9 processors.
@@ -1152,12 +1149,8 @@ config PL310_ERRATA_588369
 	   clean operation followed immediately by an invalidate operation,
 	   both performing to the same memory location. This functionality
 	   is not correctly implemented in PL310 as clean lines are not
-<<<<<<< HEAD
-	   invalidated as a result of these operations. Note that this errata
-	   uses Texas Instrument's secure monitor api.
-=======
 	   invalidated as a result of these operations.
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 
 config ARM_ERRATA_720789
 	bool "ARM errata: TLBIASIDIS and TLBIMVAIS operations can broadcast a faulty ASID"
@@ -1170,8 +1163,6 @@ config ARM_ERRATA_720789
 	  invalidated are not, resulting in an incoherency in the system page
 	  tables. The workaround changes the TLB flushing routines to invalidate
 	  entries regardless of the ASID.
-<<<<<<< HEAD
-=======
 
 config PL310_ERRATA_727915
 	bool "Background Clean & Invalidate by Way operation can cause data corruption"
@@ -1244,7 +1235,7 @@ config ARM_ERRATA_754327
 	  This workaround defines cpu_relax() as smp_mb(), preventing correctly
 	  written polling loops from denying visibility of updates to memory.
 
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 endmenu
 
 source "arch/arm/common/Kconfig"
@@ -1419,14 +1410,9 @@ source kernel/Kconfig.preempt
 
 config HZ
 	int
-<<<<<<< HEAD
 	default 128 if ARCH_L7200
 	default S5P_HIGH_RES_TIMERS_HZ if S5P_HIGH_RES_TIMERS
 	default 200 if ARCH_EBSA110 || ARCH_S3C2410 || ARCH_S5P6440 || ARCH_S5P6442 || ARCH_S5PV210
-=======
-	default 200 if ARCH_EBSA110 || ARCH_S3C2410 || ARCH_S5P64X0 || \
-		ARCH_S5PV210 || ARCH_EXYNOS4
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	default OMAP_32K_TIMER_HZ if ARCH_OMAP && OMAP_32K_TIMER
 	default AT91_TIMER_HZ if ARCH_AT91
 	default SHMOBILE_TIMER_HZ if ARCH_SHMOBILE

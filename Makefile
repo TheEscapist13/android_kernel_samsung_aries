@@ -1,16 +1,9 @@
-<<<<<<< HEAD
-VERSION = 2
-PATCHLEVEL = 6
-SUBLEVEL = 35
-EXTRAVERSION = .13
-NAME = Yokohama
-=======
 VERSION = 3
 PATCHLEVEL = 0
 SUBLEVEL = 0
 EXTRAVERSION = -rc1
 NAME = Sneaky Weasel
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
@@ -200,13 +193,10 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 export KBUILD_BUILDHOST := $(SUBARCH)
-<<<<<<< HEAD
+
 ARCH		?= arm
 CROSS_COMPILE	?= ../../../prebuilt/linux-x86/toolchain/arm-eabi-4.4.3/bin/arm-eabi-
-=======
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -1193,7 +1183,7 @@ PHONY += $(clean-dirs) clean archclean
 $(clean-dirs):
 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
 
-<<<<<<< HEAD
+
 clean: archclean $(clean-dirs)
 	$(call cmd,rmdirs)
 	$(call cmd,rmfiles)
@@ -1204,9 +1194,7 @@ clean: archclean $(clean-dirs)
 		-o -name '*.symtypes' -o -name 'modules.order' \
 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
-=======
-clean: archclean
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 
 # mrproper - Delete all generated files, including .config
 #
@@ -1416,7 +1404,7 @@ $(clean-dirs):
 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
 
 clean:	rm-dirs := $(MODVERDIR)
-<<<<<<< HEAD
+
 clean: rm-files := $(KBUILD_EXTMOD)/Module.symvers \
                    $(KBUILD_EXTMOD)/modules.order \
                    $(KBUILD_EXTMOD)/modules.builtin
@@ -1428,9 +1416,7 @@ clean: $(clean-dirs)
 		\( -name '*.[oas]' -o -name '*.ko' -o -name '.*.cmd' \
 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
 		-o -name '*.gcno' \) -type f -print | xargs rm -f
-=======
-clean: rm-files := $(KBUILD_EXTMOD)/Module.symvers
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 
 help:
 	@echo  '  Building external modules.'
