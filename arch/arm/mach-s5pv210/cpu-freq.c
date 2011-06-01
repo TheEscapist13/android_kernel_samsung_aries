@@ -553,9 +553,10 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 	s3c_freqs.freqs.new = arm_clk;
 	s3c_freqs.freqs.cpu = 0;
 
+#if 0
 	if(enabled_freqs[index] == 0) 
 		goto out;
-
+#endif
 	/*
 	 * Run this function unconditionally until s3c_freqs.freqs.new
 	 * and s3c_freqs.freqs.old are both set by this function.
