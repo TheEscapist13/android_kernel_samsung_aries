@@ -275,18 +275,10 @@ static int vic_set_wake(struct irq_data *d, unsigned int on)
 
 static struct irq_chip vic_chip = {
 	.name		= "VIC",
-<<<<<<< HEAD
-	.ack		= vic_ack_irq,
-	.mask		= vic_mask_irq,
-	.unmask		= vic_unmask_irq,
-	.retrigger	= vic_retrigger_irq,
-	.set_wake	= vic_set_wake,
-=======
 	.irq_ack	= vic_ack_irq,
 	.irq_mask	= vic_mask_irq,
 	.irq_unmask	= vic_unmask_irq,
 	.irq_set_wake	= vic_set_wake,
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 };
 
 static void __init vic_disable(void __iomem *base)

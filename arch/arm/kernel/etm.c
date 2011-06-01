@@ -37,37 +37,18 @@ MODULE_AUTHOR("Alexander Shishkin");
 struct tracectx {
 	unsigned int	etb_bufsz;
 	void __iomem	*etb_regs;
-<<<<<<< HEAD
-	void __iomem	**etm_regs;
-	int		etm_regs_count;
-	unsigned long	flags;
-	int		ncmppairs;
-	int		etm_portsz;
-	u32		etb_fc;
-	unsigned long	range_start;
-	unsigned long	range_end;
-	unsigned long	data_range_start;
-	unsigned long	data_range_end;
-	bool		dump_initial_etb;
-=======
 	void __iomem	*etm_regs;
 	unsigned long	flags;
 	int		ncmppairs;
 	int		etm_portsz;
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 	struct device	*dev;
 	struct clk	*emu_clk;
 	struct mutex	mutex;
 };
 
-<<<<<<< HEAD
-static struct tracectx tracer = {
-	.range_start = (unsigned long)_stext,
-	.range_end = (unsigned long)_etext,
-};
-=======
+
 static struct tracectx tracer;
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
+
 
 static inline bool trace_isrunning(struct tracectx *t)
 {
@@ -637,82 +618,7 @@ static ssize_t trace_mode_store(struct kobject *kobj,
 static struct kobj_attribute trace_mode_attr =
 	__ATTR(trace_mode, 0644, trace_mode_show, trace_mode_store);
 
-<<<<<<< HEAD
-static ssize_t trace_range_show(struct kobject *kobj,
-				  struct kobj_attribute *attr,
-				  char *buf)
-{
-	return sprintf(buf, "%08lx %08lx\n",
-			tracer.range_start, tracer.range_end);
-}
-
-static ssize_t trace_range_store(struct kobject *kobj,
-				   struct kobj_attribute *attr,
-				   const char *buf, size_t n)
-{
-	unsigned long range_start, range_end;
-
-	if (sscanf(buf, "%lx %lx", &range_start, &range_end) != 2)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-	tracer.range_start = range_start;
-	tracer.range_end = range_end;
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
-
-
-static struct kobj_attribute trace_range_attr =
-	__ATTR(trace_range, 0644, trace_range_show, trace_range_store);
-
-static ssize_t trace_data_range_show(struct kobject *kobj,
-				  struct kobj_attribute *attr,
-				  char *buf)
-{
-	unsigned long range_start;
-	u64 range_end;
-	mutex_lock(&tracer.mutex);
-	range_start = tracer.data_range_start;
-	range_end = tracer.data_range_end;
-	if (!range_end && (tracer.flags & TRACER_TRACE_DATA))
-		range_end = 0x100000000ULL;
-	mutex_unlock(&tracer.mutex);
-	return sprintf(buf, "%08lx %08llx\n", range_start, range_end);
-}
-
-static ssize_t trace_data_range_store(struct kobject *kobj,
-				   struct kobj_attribute *attr,
-				   const char *buf, size_t n)
-{
-	unsigned long range_start;
-	u64 range_end;
-
-	if (sscanf(buf, "%lx %llx", &range_start, &range_end) != 2)
-		return -EINVAL;
-
-	mutex_lock(&tracer.mutex);
-	tracer.data_range_start = range_start;
-	tracer.data_range_end = (unsigned long)range_end;
-	if (range_end)
-		tracer.flags |= TRACER_TRACE_DATA;
-	else
-		tracer.flags &= ~TRACER_TRACE_DATA;
-	mutex_unlock(&tracer.mutex);
-
-	return n;
-}
-
-
-static struct kobj_attribute trace_data_range_attr =
-	__ATTR(trace_data_range, 0644,
-		trace_data_range_show, trace_data_range_store);
-
-static int __init etm_probe(struct amba_device *dev, struct amba_id *id)
-=======
 static int __devinit etm_probe(struct amba_device *dev, const struct amba_id *id)
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 {
 	struct tracectx *t = &tracer;
 	int ret = 0;
@@ -747,17 +653,11 @@ static int __devinit etm_probe(struct amba_device *dev, const struct amba_id *id
 	t->flags = TRACER_CYCLE_ACC | TRACER_TRACE_DATA;
 	t->etm_portsz = 1;
 
-<<<<<<< HEAD
-	etm_unlock(t, t->etm_regs_count);
-	(void)etm_readl(t, t->etm_regs_count, ETMMR_PDSR);
-	/* dummy first read */
-	(void)etm_readl(&tracer, t->etm_regs_count, ETMMR_OSSRR);
-=======
+
 	etm_unlock(t);
 	(void)etm_readl(t, ETMMR_PDSR);
 	/* dummy first read */
 	(void)etm_readl(&tracer, ETMMR_OSSRR);
->>>>>>> af0d6a0a3a30946f7df69c764791f1b0643f7cd6
 
 	t->ncmppairs = etm_readl(t, t->etm_regs_count, ETMR_CONFCODE) & 0xf;
 	etm_writel(t, t->etm_regs_count, 0x441, ETMR_CTRL);
