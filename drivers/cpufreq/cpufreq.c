@@ -35,6 +35,7 @@
 int exp_UV_mV[12]; 
 extern unsigned int freq_uv_table[12][3];
 unsigned int enabled_freqs[12] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+extern unsigned int gpu[12][2];
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
@@ -651,13 +652,13 @@ static ssize_t show_scaling_setspeed(struct cpufreq_policy *policy, char *buf)
 	return policy->governor->show_setspeed(policy, buf);
 }
 
-//Sysfs interface to interface with Xan's uv app
+
 static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf) {
 
 	return sprintf(buf, "%d %d %d %d %d %d %d %d %d %d %d %d\n", exp_UV_mV[0], exp_UV_mV[1], exp_UV_mV[2], exp_UV_mV[3], exp_UV_mV[4], exp_UV_mV[5], exp_UV_mV[6], exp_UV_mV[7], exp_UV_mV[8], exp_UV_mV[9], exp_UV_mV[10], exp_UV_mV[11]);
 
 }
-//This one too (thanks raspdeep)
+
 
 static ssize_t store_UV_mV_table(struct cpufreq_policy *policy,
 					const char *buf, size_t count) {
@@ -727,9 +728,49 @@ static ssize_t store_states_enabled_table(struct cpufreq_policy *policy, const c
 		return count;
 
 }
+
+static ssize_t show_gpu_clock_table(struct cpufreq_policy *policy, char *buf) {
 	
+	return sprintf(buf, "%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n",
+		gpu[0][0], gpu[0][1],
+		gpu[1][0], gpu[1][1],
+		gpu[2][0], gpu[2][1],
+		gpu[3][0], gpu[3][1],
+		gpu[4][0], gpu[4][1],
+		gpu[5][0], gpu[5][1],
+		gpu[6][0], gpu[6][1],
+		gpu[7][0], gpu[7][1],
+		gpu[8][0], gpu[8][1],
+		gpu[9][0], gpu[9][1],
+		gpu[10][0], gpu[10][1],
+		gpu[11][0], gpu[11][1]);
 
+}
 
+static ssize_t store_gpu_clock_table(struct cpufreq_policy *policy, const char *buf, int count) {
+
+	unsigned int ret = -EINVAL;
+	
+	ret = sscanf(buf, "%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n%d %d\n",
+		&gpu[0][0], &gpu[0][1],
+		&gpu[1][0], &gpu[1][1],
+		&gpu[2][0], &gpu[2][1],
+		&gpu[3][0], &gpu[3][1],
+		&gpu[4][0], &gpu[4][1],
+		&gpu[5][0], &gpu[5][1],
+		&gpu[6][0], &gpu[6][1],
+		&gpu[7][0], &gpu[7][1],
+		&gpu[8][0], &gpu[8][1],
+		&gpu[9][0], &gpu[9][1],
+		&gpu[10][0], &gpu[10][1],
+		&gpu[11][0], &gpu[11][1]);
+
+	if(ret != -1)
+		return -EINVAL;
+	else
+		return ret;
+
+}
 
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
@@ -748,6 +789,7 @@ cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 cpufreq_freq_attr_rw(UV_mV_table);
 cpufreq_freq_attr_rw(states_enabled_table);
+cpufreq_freq_attr_rw(gpu_clock_table);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -764,6 +806,7 @@ static struct attribute *default_attrs[] = {
 	&UV_mV_table.attr,
 	&frequency_voltage_table.attr,
 	&states_enabled_table.attr,
+	&gpu_clock_table.attr,
 	NULL
 };
 

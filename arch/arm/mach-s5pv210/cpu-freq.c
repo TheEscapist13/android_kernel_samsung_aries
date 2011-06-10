@@ -85,6 +85,24 @@ unsigned int freq_uv_table[12][3] = {
 	{200000,	950,	950},
 	{100000,	950,	950}
 };
+
+unsigned int gpu[12][2] = {
+	//stock  current
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{200000, 200000},
+	{100000, 100000}
+};
+
 extern int enabled_freqs[12];
 	
 
@@ -154,9 +172,9 @@ static u32 clkdiv_val[12][11] = {
 	 * HCLK_DSYS, PCLK_DSYS, HCLK_PSYS, PCLK_PSYS, ONEDRAM,
 	 * MFC, G3D }
 	 */
-	{0, 6, 6, 1.3, 3, 1, 4, 1, 3, 0.15, 0.15},
+	{0, 6.7, 6.7, 1, 3, 1, 4, 1, 3, 0, 0},
 	//L0:1550
-	{0, 6, 6, 1.3, 3, 1, 4, 1, 3, 0.15, 0.15},
+	{0, 6.7, 6.7, 1, 3, 1, 4, 1, 3, 0, 0},
 	//L1: 1500
 	{0, 6, 6, 1, 3, 1, 4, 1, 3, 0, 0},
 	//L2: 1400
@@ -187,18 +205,18 @@ static struct s3c_freq clk_info[] = {
 		.hclk_tns   = 0,
 		.hclk	    = 133000,
 		.pclk       = 66000,
-                .hclk_msys  = 216216,
+                .hclk_msys  = 200000,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
                 .pclk_dsys  = 83375,
 	 },
-	 [L1] = {        /* L0: 1.6GHz */
+	 [L1] = {       
                 .fclk       = 1550000,
                 .armclk     = 1550000,
                 .hclk_tns   = 0,
                 .hclk       = 133000,
                 .pclk       = 66000,
-                .hclk_msys  = 216216,
+                .hclk_msys  = 200000,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
                 .pclk_dsys  = 83375,
@@ -209,10 +227,10 @@ static struct s3c_freq clk_info[] = {
                 .hclk_tns   = 0,
                 .hclk       = 133000,
                 .pclk       = 66000,
-                .hclk_msys  = 214785,
+                .hclk_msys  = 200000,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
-                .pclk_dsys  = 83375,
+                .pclk_dsys  = 83375
          },
 	 [L3] = {        /* L0: 1.4GHz */
                 .fclk       = 1400000,
@@ -220,7 +238,7 @@ static struct s3c_freq clk_info[] = {
                 .hclk_tns   = 0,
                 .hclk       = 133000,
                 .pclk       = 66000,
-                .hclk_msys  = 233333,
+                .hclk_msys  = 200000,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
                 .pclk_dsys  = 83375,
@@ -309,7 +327,7 @@ static struct s3c_freq clk_info[] = {
 		.hclk_tns   = 0,
 		.hclk       = 66000,
 		.pclk       = 66000,
-		.hclk_msys  = 100000,
+		.hclk_msys  = 200000,
 		.pclk_msys  = 100000,
 		.hclk_dsys  = 83375,
 		.pclk_dsys  = 83375,
@@ -590,6 +608,52 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 		}
 	}
 	cpufreq_notify_transition(&s3c_freqs.freqs, CPUFREQ_PRECHANGE);
+
+	/* Yeah, this is hacky as fuck. So what? */
+
+	switch(s3c_freqs.old.armclk) {
+		case 1600000:
+			s3c_freqs.old.hclk_msys = gpu[0][1];
+			break;
+		case 1550000:
+			s3c_freqs.old.hclk_msys = gpu[1][1];
+			break;
+		case 1500000:
+			s3c_freqs.old.hclk_msys = gpu[2][1];
+			break;
+		case 1400000:
+			s3c_freqs.old.hclk_msys = gpu[3][1];
+			break;
+		case 1300000:
+			s3c_freqs.old.hclk_msys = gpu[4][1];
+			break;
+		case 1200000:
+			s3c_freqs.old.hclk_msys = gpu[5][1];
+			break;
+		case 1000000:
+			s3c_freqs.old.hclk_msys = gpu[6][1];
+			break;
+		case 800000:
+			s3c_freqs.old.hclk_msys = gpu[7][1];
+			break;
+		case 600000:
+			s3c_freqs.old.hclk_msys = gpu[8][1];
+			break;
+		case 400000:
+			s3c_freqs.old.hclk_msys = gpu[9][1];
+			break;
+		case 200000:
+			s3c_freqs.old.hclk_msys = gpu[10][1];
+			break;
+		case 100000:
+			s3c_freqs.old.hclk_msys = gpu[11][1];
+			break;
+		}
+		
+			
+
+	s3c_freqs.new.hclk_msys = gpu[index][1];
+	
 
 	if (s3c_freqs.new.fclk != s3c_freqs.old.fclk || first_run)
 		pll_changing = 1;
