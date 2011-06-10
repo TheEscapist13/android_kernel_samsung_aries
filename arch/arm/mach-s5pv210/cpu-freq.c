@@ -88,19 +88,19 @@ unsigned int freq_uv_table[12][3] = {
 
 unsigned int gpu[12][2] = {
 	//stock  current
-	{200000, 230000},
-	{200000, 230000},
-	{200000, 230000},
-	{200000, 230000},
-	{200000, 230000},
-	{200000, 230000},
-	{200000, 200000},
-	{200000, 200000},
-	{200000, 200000},
-	{200000, 200000},
-	{200000, 200000},
-	{200000, 200000},
-	{100000, 100000}
+	{230, 230},
+	{230, 230},
+	{230, 230},
+	{230, 230},
+	{230, 230},
+	{230, 230},
+	{200, 200},
+	{200, 200},
+	{200, 200},
+	{200, 200},
+	{200, 200},
+	{200, 200},
+	{100, 100}
 };
 
 extern int enabled_freqs[12];
@@ -650,9 +650,10 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 			break;
 		}
 		
-			
-
-	s3c_freqs.new.hclk_msys = gpu[index][1];
+	/* Convert to khz */	
+	
+	s3c_freqs.old.hclk_msys *= 1000;
+	s3c_freqs.new.hclk_msys = gpu[index][1]*1000;
 	
 
 	if (s3c_freqs.new.fclk != s3c_freqs.old.fclk || first_run)
