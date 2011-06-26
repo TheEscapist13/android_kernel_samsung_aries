@@ -10,7 +10,7 @@ config PVR_SGX
 choice
 	prompt "PowerVR build type"
 	depends on PVR_SGX
-	default PVR_BUILD_RELEASE
+	default PVR_BUILD_DEBUG
 
 config PVR_BUILD_RELEASE
 	bool "Release"

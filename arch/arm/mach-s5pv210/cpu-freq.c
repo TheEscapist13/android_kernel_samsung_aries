@@ -99,7 +99,6 @@ unsigned int gpu[12][2] = {
 	{200, 200},
 	{200, 200},
 	{200, 200},
-	{200, 200},
 	{100, 100}
 };
 
@@ -227,7 +226,7 @@ static struct s3c_freq clk_info[] = {
                 .hclk_tns   = 0,
                 .hclk       = 133000,
                 .pclk       = 66000,
-                .hclk_msys  = 200000,
+                .hclk_msys  = 300000,
                 .pclk_msys  = 100000,
                 .hclk_dsys  = 166750,
                 .pclk_dsys  = 83375
@@ -609,7 +608,7 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 	}
 	cpufreq_notify_transition(&s3c_freqs.freqs, CPUFREQ_PRECHANGE);
 
-	/* Yeah, this is hacky as fuck. So what? */
+#if 1	/* Yeah, this is hacky as fuck. So what? */
 
 	switch(s3c_freqs.old.armclk) {
 		case 1600000:
@@ -651,10 +650,14 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 		}
 		
 	/* Convert to khz */	
+
+	
 	
 	s3c_freqs.old.hclk_msys *= 1000;
 	s3c_freqs.new.hclk_msys = gpu[index][1]*1000;
-	
+	printk("CPUFREQ: current cpu freq %d, new cpu freq %d, current hclk_msys %d, new hclk_msys %d\n", s3c_freqs.old.armclk, s3c_freqs.new.armclk, s3c_freqs.old.hclk_msys, s3c_freqs.new.hclk_msys);
+
+#endif
 
 	if (s3c_freqs.new.fclk != s3c_freqs.old.fclk || first_run)
 		pll_changing = 1;
@@ -700,7 +703,7 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 		 * that should be fixed before.
 		 */
 		reg = backup_dmc1_reg * s3c_freqs.new.hclk_msys;
-		reg /= clk_info[backup_freq_level].hclk_msys;
+		reg /= s3c_freqs.new.hclk_msys;
 
 		/*
 		 * When ARM_CLK is absed on APLL->MPLL,
@@ -801,8 +804,13 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 	 * then, the refresh rate should decrease
 	 * (by original refresh count * n) (n : clock rate)
 	 */
+#if 0
 	reg = backup_dmc1_reg * clk_info[index].hclk_msys;
 	reg /= clk_info[backup_freq_level].hclk_msys;
+#else
+	reg = backup_dmc1_reg * s3c_freqs.new.hclk_msys;
+	reg /= s3c_freqs.new .hclk_msys;
+#endif
 	__raw_writel(reg & 0xFFFF, S5P_VA_DMC1 + 0x30);
 	cpufreq_notify_transition(&s3c_freqs.freqs, CPUFREQ_POSTCHANGE);
 
@@ -825,7 +833,6 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 		exp_UV_mV[index] = -50;
 
 	previous_arm_volt = (dvs_conf[index].arm_volt - (exp_UV_mV[index] * 1000));
-	//freq_uv_table[index][2] = (int) previous_arm_volt / 1000;
 
 	if (first_run)
 		first_run = false;
