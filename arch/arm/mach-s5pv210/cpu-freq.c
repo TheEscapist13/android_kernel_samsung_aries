@@ -110,7 +110,15 @@ struct s5pv210_dvs_conf {
 	unsigned long       int_volt;   /* uV */
 };
 
+
 const unsigned long arm_volt_max = 1500000;
+#ifdef CONFIG_DVFS_LIMIT
+static unsigned int g_dvfs_high_lock_token = 0;
+static unsigned int g_dvfs_high_lock_limit = 4;
+static unsigned int g_dvfslockval[DVFS_LOCK_TOKEN_NUM];
+//static DEFINE_MUTEX(dvfs_high_lock);
+#endif
+
 const unsigned long int_volt_max = 1250000;
 
 
@@ -510,6 +518,67 @@ static void s5pv210_cpufreq_clksrcs_MPLL2APLL(unsigned int index,
 	} while (reg & S5P_CLKMUX_STAT0_MUX200);
 }
 
+#ifdef CONFIG_DVFS_LIMIT
+void s5pv210_lock_dvfs_high_level(uint nToken, uint perf_level) 
+{
+	uint freq_level;
+	struct cpufreq_policy *policy;
+
+	printk(KERN_DEBUG "%s : lock with token(%d) level(%d) current(%X)\n",
+			__func__, nToken, perf_level, g_dvfs_high_lock_token);
+
+	if (g_dvfs_high_lock_token & (1 << nToken))
+		return;
+
+	if (perf_level > (MAX_PERF_LEVEL - 1))
+		return;
+
+	//mutex_lock(&dvfs_high_lock);
+
+	g_dvfs_high_lock_token |= (1 << nToken);
+	g_dvfslockval[nToken] = perf_level;
+
+	if (perf_level <  g_dvfs_high_lock_limit)
+		g_dvfs_high_lock_limit = perf_level;
+
+	//mutex_unlock(&dvfs_high_lock);
+
+	policy = cpufreq_cpu_get(0);
+	if (policy == NULL)
+		return;
+
+	freq_level = freq_table[perf_level].frequency;
+
+	cpufreq_driver_target(policy, freq_level, CPUFREQ_RELATION_L);
+}
+EXPORT_SYMBOL(s5pv210_lock_dvfs_high_level);
+
+void s5pv210_unlock_dvfs_high_level(unsigned int nToken) 
+{
+	unsigned int i;
+
+	//mutex_lock(&dvfs_high_lock);
+
+	g_dvfs_high_lock_token &= ~(1 << nToken);
+	g_dvfslockval[nToken] = MAX_PERF_LEVEL;
+	g_dvfs_high_lock_limit = MAX_PERF_LEVEL;
+
+	if (g_dvfs_high_lock_token) {
+		for (i = 0; i < DVFS_LOCK_TOKEN_NUM; i++) {
+			if (g_dvfslockval[i] < g_dvfs_high_lock_limit)
+				g_dvfs_high_lock_limit = g_dvfslockval[i];
+		}
+	}
+
+	//mutex_unlock(&dvfs_high_lock);
+
+	printk(KERN_DEBUG "%s : unlock with token(%d) current(%X) level(%d)\n",
+			__func__, nToken, g_dvfs_high_lock_token, g_dvfs_high_lock_limit);
+}
+EXPORT_SYMBOL(s5pv210_unlock_dvfs_high_level);
+#endif
+
+
 static int no_cpufreq_access;
 /*
  * s5pv210_cpufreq_target: relation has an additional symantics other than
@@ -564,6 +633,13 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 		ret = -EINVAL;
 		goto out;
 	}
+	
+#ifdef CONFIG_DVFS_LIMIT
+	if (g_dvfs_high_lock_token) {
+		if (index > g_dvfs_high_lock_limit)
+			index = g_dvfs_high_lock_limit;
+	}
+#endif
 
 	arm_clk = freq_table[index].frequency;
 
@@ -809,7 +885,7 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 	reg /= clk_info[backup_freq_level].hclk_msys;
 #else
 	reg = backup_dmc1_reg * s3c_freqs.new.hclk_msys;
-	reg /= s3c_freqs.new .hclk_msys;
+	reg /= s3c_freqs.new.hclk_msys;
 #endif
 	__raw_writel(reg & 0xFFFF, S5P_VA_DMC1 + 0x30);
 	cpufreq_notify_transition(&s3c_freqs.freqs, CPUFREQ_POSTCHANGE);
@@ -951,13 +1027,19 @@ static int __init s5pv210_cpufreq_driver_init(struct cpufreq_policy *policy)
 	if(unlikely(exp_UV_mV[level] < -50)) 
 		exp_UV_mV[level] = -50;
 
+
 	previous_arm_volt = (dvs_conf[level].arm_volt - (exp_UV_mV[level]*1000));
 
+#ifdef CONFIG_DVFS_LIMIT
+	for(i = 0; i < DVFS_LOCK_TOKEN_NUM; i++)
+		g_dvfslockval[i] = MAX_PERF_LEVEL;
+#endif
+
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
-//Set initial max speed to 1ghz for people who don't want to overclock
 	policy->max = 1000000;
 	policy->min = 100000;
 	return 0;
+
 }
 
 static int s5pv210_cpufreq_notifier_event(struct notifier_block *this,
