@@ -731,7 +731,7 @@ static int s5pv210_cpufreq_target(struct cpufreq_policy *policy,
 	
 	s3c_freqs.old.hclk_msys *= 1000;
 	s3c_freqs.new.hclk_msys = gpu[index][1]*1000;
-	printk("CPUFREQ: current cpu freq %d, new cpu freq %d, current hclk_msys %d, new hclk_msys %d\n", s3c_freqs.old.armclk, s3c_freqs.new.armclk, s3c_freqs.old.hclk_msys, s3c_freqs.new.hclk_msys);
+	//printk("CPUFREQ: current cpu freq %d, new cpu freq %d, current hclk_msys %d, new hclk_msys %d\n", s3c_freqs.old.armclk, s3c_freqs.new.armclk, s3c_freqs.old.hclk_msys, s3c_freqs.new.hclk_msys);
 
 #endif
 
