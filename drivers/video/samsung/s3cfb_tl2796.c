@@ -283,7 +283,6 @@ static void setup_gamma_regs(struct s5p_lcd *lcd, u16 gamma_regs[])
 		gamma_regs[c] = adj | 0x100;
 #endif
 
-<<<<<<< HEAD
 		// calculate brightness value for color c
 		v255 = vx[5] = gamma_lookup(lcd, brightness, bv->v255, c);
 		adj = 600 - 120 - DIV_ROUND_CLOSEST(600 * v255, v0);
@@ -334,39 +333,6 @@ static void setup_gamma_regs(struct s5p_lcd *lcd, u16 gamma_regs[])
 		}
 	}
 }
-=======
-#ifdef CONFIG_SAMSUNG_FASCINATE
-typedef enum {
-	BACKLIGHT_LEVEL_OFF	= 0,
-	BACKLIGHT_LEVEL_DIMMING	= 1,
-	BACKLIGHT_LEVEL_NORMAL	= 6
-} backlight_level_t;
-
-backlight_level_t backlight_level = BACKLIGHT_LEVEL_OFF;
-#endif
-
-struct s5p_lcd {
-    int ldi_enable;
-    int bl;
-    int acl_enable;
-    int cur_acl;
-    int on_19gamma;
-    const struct tl2796_gamma_adj_points *gamma_adj_points;
-    struct mutex	lock;
-    struct device *dev;
-    struct spi_device *g_spi;
-    struct s5p_panel_data	*data;
-    struct backlight_device *bl_dev;
-    struct lcd_device *lcd_dev;
-    struct class *acl_class;
-    struct device *switch_aclset_dev;
-    struct class *gammaset_class;
-    struct device *switch_gammaset_dev;
-    struct device *sec_lcdtype_dev;
-    struct early_suspend    early_suspend;
-};
->>>>>>> android-samsung-2.6.35
-
 static int s6e63m0_spi_write_driver(struct s5p_lcd *lcd, u16 reg)
 {
 	u16 buf[1];
@@ -502,16 +468,7 @@ static int s5p_bl_update_status(struct backlight_device *bd)
 	if (bl < 0 || bl > 255)
 		return -EINVAL;
 
-<<<<<<< HEAD
 	mutex_lock(&lcd->lock);
-=======
-#ifdef CONFIG_SAMSUNG_FASCINATE
-    backlight_level = BACKLIGHT_LEVEL_OFF;
-#endif
-
-    return 0;
-}
->>>>>>> android-samsung-2.6.35
 
 	lcd->bl = bl;
 
@@ -958,7 +915,7 @@ static ssize_t red_multiplier_original_show(struct device *dev, struct device_at
 	return sprintf(buf, "%u\n", original_color_adj_mults[0]);
 }
 
-<<<<<<< HEAD
+
 static ssize_t red_multiplier_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	u32 value;
@@ -969,18 +926,7 @@ static ssize_t red_multiplier_store(struct device *dev, struct device_attribute 
 	}
 	return size;
 }
-=======
-#ifdef CONFIG_SAMSUNG_FASCINATE
-    if(bl == 0)
-            backlight_level = BACKLIGHT_LEVEL_OFF;	//lcd off
-    else if((bl < 30) && (bl > 0))
-            backlight_level = BACKLIGHT_LEVEL_DIMMING;	//dimming
-    else
-            backlight_level = BACKLIGHT_LEVEL_NORMAL;	//normal
-#endif
 
-    mutex_lock(&lcd->lock);
->>>>>>> android-samsung-2.6.35
 
 static ssize_t green_multiplier_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
