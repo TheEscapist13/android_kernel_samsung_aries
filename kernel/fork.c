@@ -176,10 +176,8 @@ static inline void free_signal_struct(struct signal_struct *sig)
 
 static inline void put_signal_struct(struct signal_struct *sig)
 {
-	if (atomic_dec_and_test(&sig->sigcnt)) {
-		sched_autogroup_exit(sig);
+	if (atomic_dec_and_test(&sig->sigcnt))
 		free_signal_struct(sig);
-	}
 }
 
 int task_free_register(struct notifier_block *n)
@@ -774,13 +772,13 @@ static int copy_fs(unsigned long clone_flags, struct task_struct *tsk)
 	struct fs_struct *fs = current->fs;
 	if (clone_flags & CLONE_FS) {
 		/* tsk->fs is already what we want */
-		write_lock(&fs->lock);
+		spin_lock(&fs->lock);
 		if (fs->in_exec) {
-			write_unlock(&fs->lock);
+			spin_unlock(&fs->lock);
 			return -EAGAIN;
 		}
 		fs->users++;
-		write_unlock(&fs->lock);
+		spin_unlock(&fs->lock);
 		return 0;
 	}
 	tsk->fs = copy_fs_struct(fs);
@@ -919,7 +917,6 @@ static int copy_signal(unsigned long clone_flags, struct task_struct *tsk)
 	posix_cpu_timers_init_group(sig);
 
 	tty_audit_fork(sig);
-	sched_autogroup_fork(sig);
 
 	sig->oom_adj = current->signal->oom_adj;
 
@@ -1698,13 +1695,13 @@ SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
 
 		if (new_fs) {
 			fs = current->fs;
-			write_lock(&fs->lock);
+			spin_lock(&fs->lock);
 			current->fs = new_fs;
 			if (--fs->users)
 				new_fs = NULL;
 			else
 				new_fs = fs;
-			write_unlock(&fs->lock);
+			spin_unlock(&fs->lock);
 		}
 
 		if (new_mm) {

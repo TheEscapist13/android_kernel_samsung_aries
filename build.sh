@@ -1,6 +1,4 @@
-
-#/bin/bash -x
-
+#!/bin/bash
 
 setup ()
 {

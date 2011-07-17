@@ -949,9 +949,10 @@ unknown:
 		 */
 		switch (ctrl->bRequestType & USB_RECIP_MASK) {
 		case USB_RECIP_INTERFACE:
+			if (cdev->config == NULL)
+				return value;
 
-			if (cdev->config)
-				f = cdev->config->interface[intf];
+			f = cdev->config->interface[intf];
 			break;
 
 		case USB_RECIP_ENDPOINT:

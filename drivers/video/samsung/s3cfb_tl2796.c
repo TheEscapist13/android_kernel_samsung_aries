@@ -333,6 +333,7 @@ static void setup_gamma_regs(struct s5p_lcd *lcd, u16 gamma_regs[])
 		}
 	}
 }
+
 static int s6e63m0_spi_write_driver(struct s5p_lcd *lcd, u16 reg)
 {
 	u16 buf[1];
@@ -915,7 +916,6 @@ static ssize_t red_multiplier_original_show(struct device *dev, struct device_at
 	return sprintf(buf, "%u\n", original_color_adj_mults[0]);
 }
 
-
 static ssize_t red_multiplier_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	u32 value;
@@ -926,7 +926,6 @@ static ssize_t red_multiplier_store(struct device *dev, struct device_attribute 
 	}
 	return size;
 }
-
 
 static ssize_t green_multiplier_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
