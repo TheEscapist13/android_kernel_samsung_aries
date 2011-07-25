@@ -765,6 +765,7 @@ switch(s3c_freqs.old.armclk) {
 		reg /= gpu[backup_freq_level][1];
 #else
 		reg /= clk_info[backup_freq_level].hclk_msys;
+#endif
 
 		/*
 		 * When ARM_CLK is absed on APLL->MPLL,
