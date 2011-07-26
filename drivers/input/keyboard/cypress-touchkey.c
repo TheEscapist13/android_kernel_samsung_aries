@@ -28,6 +28,7 @@
 #include <linux/earlysuspend.h>
 #include <linux/input/cypress-touchkey.h>
 #include <linux/miscdevice.h>
+#include <linux/timer.h>
 
 #define SCANCODE_MASK		0x07
 #define UPDOWN_EVENT_MASK	0x08
@@ -59,6 +60,11 @@ struct cypress_touchkey_devdata {
 bool bln_enabled = false;
 bool BacklightNotification_ongoing = false;
 bool bln_blink_enabled = false;
+static struct timer_list timer;
+int time = 2000;
+bool previous;
+static void bl_off(struct work_struct *bl_off_work);
+static DECLARE_WORK(bl_off_work, bl_off);
 #define BACKLIGHTNOTIFICATION_VERSION 8
 struct cypress_touchkey_devdata *blndevdata;
 #endif
@@ -115,6 +121,12 @@ static void all_keys_up(struct cypress_touchkey_devdata *devdata)
 						devdata->pdata->keycode[i], 0);
 
 	input_sync(devdata->input_dev);
+}
+
+static void bl_off(struct work_struct *bl_off_work)
+{
+	printk("Cypress: bl_off: turning off lights\n");
+	i2c_touchkey_write_byte(blndevdata, blndevdata->backlight_off);
 }
 
 static int recovery_routine(struct cypress_touchkey_devdata *devdata)
@@ -192,6 +204,11 @@ static irqreturn_t touchkey_interrupt_thread(int irq, void *touchkey_devdata)
 	}
 
 	input_sync(devdata->input_dev);
+	printk("Cypress: resetting timer after interrupt\n");
+#ifdef CONFIG_BACKLIGHT_NOTIFICATION
+	if(time != 0)
+		mod_timer(&timer, jiffies + msecs_to_jiffies(time));
+#endif
 
 err:
 	dev_err(&devdata->client->dev, "%s: touchkey_interrupt_thread\n", __func__);
@@ -261,6 +278,19 @@ static void cypress_touchkey_early_resume(struct early_suspend *h)
 	devdata->is_dead = false;
 	enable_irq(devdata->client->irq);
 	devdata->is_powering_on = false;
+#ifdef CONFIG_BACKLIGHT_NOTIFICATION
+	if(time != 0) 
+		mod_timer(&timer, jiffies + msecs_to_jiffies(time));
+#endif
+
+}
+#endif
+
+
+#ifdef CONFIG_BACKLIGHT_NOTIFICATION
+void timer_function(unsigned long data) {
+	
+	schedule_work(&bl_off_work);
 
 }
 #endif
@@ -374,6 +404,10 @@ static int cypress_touchkey_probe(struct i2c_client *client,
 	devdata->is_powering_on = false;
 #ifdef CONFIG_BACKLIGHT_NOTIFICATION
 	blndevdata = devdata;
+	if(time != 0) {
+		printk("Cypress: Setting up timer\n");
+		setup_timer(&timer, timer_function, 0);
+	}	
 #endif
 
 
@@ -554,16 +588,47 @@ static ssize_t backlightnotification_version(struct device *dev, struct device_a
 	return sprintf(buf, "%u\n", BACKLIGHTNOTIFICATION_VERSION);
 }
 
+static ssize_t backlight_timer_read(struct device *dev, struct device_attribute *attr, char *buf) {
+	return sprintf(buf, "%d\n", time);
+}
+
+static ssize_t backlight_timer_write(struct device *dev, struct device_attribute *attr, const char *buf, size_t size) {
+
+	if(!sscanf(buf, "%d", &time))
+		printk("Cypress-Touchkey: Unable to write backlight_timer");
+
+/* Okay, if time == 0, we're just going to delete the timer, as there is no need for it, and no real way to keep it running for infinite time. */
+	if(time == 0) {
+		del_timer(&timer);
+		previous = true;
+/* But if they decide to change the time from 0, we'll have to recreate the timer since it got deleted. 
+   Hence, previous is a bool to check to see if the previous state of "time" was 0. */
+	} else if (time != 0 && previous) {
+		setup_timer(&timer, timer_function, 0);
+		mod_timer(&timer, time);
+		previous = false;
+/* If time isn't 0, and the previous time wasn't zero, then we have nothing to worry about. */
+	} else {
+		previous = false;
+	}
+	
+	
+	return size;
+}
+	
+
 static DEVICE_ATTR(blink_control, S_IRUGO | S_IWUGO , blink_control_read, blink_control_write);
 static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO , backlightnotification_status_read, backlightnotification_status_write);
 static DEVICE_ATTR(notification_led, S_IRUGO | S_IWUGO , notification_led_status_read, notification_led_status_write);
 static DEVICE_ATTR(version, S_IRUGO , backlightnotification_version, NULL);
+static DEVICE_ATTR(backlight_timer, S_IRUGO | S_IWUGO, backlight_timer_read, backlight_timer_write);
 
 static struct attribute *bln_notification_attributes[] = {
 		&dev_attr_blink_control.attr,
 		&dev_attr_enabled.attr,
 		&dev_attr_notification_led.attr,
 		&dev_attr_version.attr,
+		&dev_attr_backlight_timer.attr,
 		NULL
 };
 
@@ -640,6 +705,7 @@ static void __exit touchkey_exit(void)
 {
 #ifdef CONFIG_BACKLIGHT_NOTIFICATION
 	misc_deregister(&backlightnotification_device);
+	del_timer(&timer);
 #endif
 	i2c_del_driver(&touchkey_i2c_driver);
 }
